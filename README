@@ -1,0 +1,10 @@
+# Running on my MAC
+
+# install fastjet
+# install fastjet/contrib
+# install ROOT
+
+> cd processing
+# change Makefile to your own local path
+> make
+> ./anaSubstructure.cpp
