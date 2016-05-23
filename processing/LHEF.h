@@ -516,19 +516,9 @@ protected:
   /**
    * Used internally to read a single line from the stream.
    */
-  // bool getline() {
-  //   return ( std::getline(file, currentLine) );
-  // }
-
   bool getline() {
-    
-    bool endbool = true;
-    std::getline(file, currentLine);
-    if (currentLine == "</LesHouchesEvents>") endbool = false;
-
-    return endbool;
+    return ( std::getline(file, currentLine) );
   }
-
 
 protected:
 
