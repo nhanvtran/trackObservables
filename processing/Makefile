@@ -13,7 +13,7 @@ all: anaSubstructure
 
 anaSubstructure: anaSubstructure.cpp
 #	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) -lRecursiveTools -lEnergyCorrelator anaSubstructure.cpp 
-	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) anaSubstructure.cpp -lRecursiveTools -lEnergyCorrelator
+	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) anaSubstructure.cpp -lEnergyCorrelator -lRecursiveTools -lNsubjettiness
 
 clean:
 	rm anaSubstructure
