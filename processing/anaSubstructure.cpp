@@ -69,10 +69,14 @@ std::vector<float> j_eta;
 std::vector<float> j_mass;
 std::vector<float> j_tau1_b1;
 std::vector<float> j_tau2_b1;
+std::vector<float> j_tau3_b1;
 std::vector<float> j_tau1_b2;
 std::vector<float> j_tau2_b2;
+std::vector<float> j_tau3_b2;
 std::vector<float> j_tau21_b2;
 std::vector<float> j_tau21_b1;
+std::vector<float> j_tau32_b2;
+std::vector<float> j_tau32_b1;
 std::vector<float> j_zlogz;
 std::vector<float> j_c1_b0;
 std::vector<float> j_c1_b1;
@@ -113,13 +117,14 @@ int main (int argc, char **argv) {
     char inName[192];
     // //sprintf( inName, "dataProcessedFinal/LHEFiles/%s-pt%04i-%04i-100k.lhe", type.c_str(), bin, bin+100 );
     // // sprintf( inName, "dataProcessedFinal/LHEFiles/%s.lhe", type.c_str() );
-    sprintf( inName, "/uscmst1b_scratch/lpc1/3DayLifetime/ntran/fromMarat/pythia82-lhc13-%s-pt1-10k.lhe",type.c_str() );
+    // sprintf( inName, "%s.lhe",type.c_str() );
+    sprintf( inName, "/uscmst1b_scratch/lpc1/3DayLifetime/ntran/fromMarat/%s.lhe",type.c_str() );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
     LHEF::Reader reader(ifsbkg) ;
 
     char outName[192];
-    sprintf( outName, "testdat/test-%s-1k.root", type.c_str() );
+    sprintf( outName, "processed-%s.root", type.c_str() );
     // int rInt = (int) (rVal*10.);
     // sprintf( outName, "dataProcessedFinalSCOT/boost2013-%s-pt%04i-%04i%s_ak%02i.root", type.c_str(), bin, bin+100, tag.c_str(), rInt );
     TFile *f = TFile::Open(outName,"RECREATE");
@@ -139,7 +144,7 @@ int main (int argc, char **argv) {
         ++evtCtr;
         if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
         if (evtCtr < 0) continue;
-        if (evtCtr > 1000) break;
+        if (evtCtr > 50000) break;
         
         // per event
         particles.clear();
@@ -162,7 +167,7 @@ int main (int argc, char **argv) {
         analyzeEvent( particles, t_tracks, t_tragam, t_allpar );        
     }
     
-    // std::cout << "finish loop" << std::endl;
+    std::cout << "finish loop" << std::endl;
     
     f->cd();
     t_tracks->Write();
@@ -195,7 +200,7 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
     // FILL IN THE TREE
     njets = out_jets.size();
     // std::cout << "Number of jets in the event = " << njets << std::endl;
-    
+
     // All Particles Looop
     for (unsigned int i = 0; i < out_jets.size(); i++){
         PushBackJetInformation(out_jets[i],0);
@@ -209,14 +214,20 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
     t_tracks->Fill();
     clearVectors();
 
+    // std::cout << "tracks" << std::endl;
+
     for (unsigned int i = 0; i < out_jets.size(); i++){
         PushBackJetInformation(out_jets[i],2);
     }
     t_tragam->Fill();
     clearVectors();
     
+    // std::cout << "tracks+photons" << std::endl;
+
     thisClustering->delete_self_when_unused();
     
+    // std::cout << "delete clustering" << std::endl;
+
 }
 
 // ----------------------------------------------------------------------------------
@@ -229,10 +240,16 @@ void declareBranches( TTree* t ){
     t->Branch("j_mass"           , &j_mass           );
     t->Branch("j_tau1_b1"        , &j_tau1_b1        );
     t->Branch("j_tau2_b1"        , &j_tau2_b1        );
+    t->Branch("j_tau3_b1"        , &j_tau3_b1        );    
     t->Branch("j_tau1_b2"        , &j_tau1_b2        );
     t->Branch("j_tau2_b2"        , &j_tau2_b2        );
+    t->Branch("j_tau3_b2"        , &j_tau3_b2        );    
     t->Branch("j_tau21_b1"       , &j_tau21_b1       );
     t->Branch("j_tau21_b2"       , &j_tau21_b2       );
+    t->Branch("j_tau21_b1"       , &j_tau21_b1       );
+    t->Branch("j_tau21_b2"       , &j_tau21_b2       );
+    t->Branch("j_tau32_b1"       , &j_tau32_b1       );
+    t->Branch("j_tau32_b2"       , &j_tau32_b2       );
     t->Branch("j_zlogz"          , &j_zlogz          );
     t->Branch("j_c1_b0"          , &j_c1_b0          );
     t->Branch("j_c1_b1"          , &j_c1_b1          );
@@ -257,10 +274,14 @@ void clearVectors(){
     j_mass.clear();
     j_tau1_b1.clear();
     j_tau2_b1.clear();
+    j_tau3_b1.clear();    
     j_tau1_b2.clear();
     j_tau2_b2.clear();
+    j_tau3_b2.clear();    
     j_tau21_b1.clear();
     j_tau21_b2.clear();
+    j_tau32_b1.clear();
+    j_tau32_b2.clear();
     j_zlogz.clear();
     j_c1_b0.clear();
     j_c1_b1.clear();
@@ -311,6 +332,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
     fastjet::PseudoJet curjet;  
     std::vector< fastjet::PseudoJet > newparticles;
+    bool jet_has_no_particles = false;
     if (particleContentFlag == 0) curjet = jet;
     if (particleContentFlag > 0){
 
@@ -321,13 +343,19 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
             if (std::find(p_ids.begin(), p_ids.end(), jet.constituents().at(j).user_index()) != p_ids.end() && particleContentFlag == 2) newparticles.push_back(jet.constituents().at(j));
         }
         // std::cout << "now cluster these particles " << newparticles.size() << std::endl;
-        // cluster them
-        fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newparticles, jetDef, fjAreaDefinition);
-        std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));        
-        
-        // std::cout << "now fill " << out_jets.size() <<  std::endl;
-        // fill into curjet
-        curjet = out_jets[0];
+        if (newparticles.size() > 0){
+            // cluster them
+            fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newparticles, jetDef, fjAreaDefinition);
+            std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));        
+            
+            // std::cout << "now fill " << out_jets.size() <<  std::endl;
+            // fill into curjet
+            curjet = out_jets[0];
+        }
+        else{
+            curjet = fastjet::PseudoJet(0,0,0,0);
+            jet_has_no_particles = true;
+        }
     }
 
     // std::cout << "new jet pt = " << curjet.pt() << std::endl;
@@ -350,10 +378,13 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     // beta = 1                   
     fastjet::contrib::Nsubjettiness nSub1KT_b1(1, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(1));
     fastjet::contrib::Nsubjettiness nSub2KT_b1(2, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(1));
+    fastjet::contrib::Nsubjettiness nSub3KT_b1(3, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(1));
+
     // beta = 2
     fastjet::contrib::Nsubjettiness nSub1KT_b2(1, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(2));
     fastjet::contrib::Nsubjettiness nSub2KT_b2(2, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(2));
-    
+    fastjet::contrib::Nsubjettiness nSub3KT_b2(3, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(2));
+
     // ECF
     fastjet::contrib::EnergyCorrelatorDoubleRatio C1_b0(1,0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorDoubleRatio C1_b1(1,1,fastjet::contrib::EnergyCorrelator::pt_R);
@@ -368,51 +399,88 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     fastjet::contrib::EnergyCorrelator ECF_E3_b1 (3,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelator ECF_E3_b2 (3,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
 
-    // Z log Z
-    float zlogz = 0.;
-    for (int i = 0; i < curjet.constituents().size(); i++){
-        float conste = curjet.constituents().at(i).e()/curjet.e();
-        zlogz += conste * log(conste);
-    }
-
     j_pt.push_back( curjet.pt() );
     j_ptfrac.push_back( curjet.pt()/jet.pt() );
     j_eta.push_back( curjet.eta() );
     j_mass.push_back( curjet.m() );                
 
-    // N-subjettiness
-    j_tau1_b1.push_back( nSub1KT_b1(curjet) );        
-    j_tau2_b1.push_back( nSub2KT_b1(curjet) );        
-    j_tau1_b2.push_back( nSub1KT_b2(curjet) );        
-    j_tau2_b2.push_back( nSub2KT_b2(curjet) );  
-    j_tau21_b1.push_back( nSub2KT_b1(curjet) / nSub1KT_b1(curjet) );
-    j_tau21_b2.push_back( nSub2KT_b2(curjet) / nSub1KT_b2(curjet) );
-    
-    // energy correlator     
-    j_zlogz.push_back( zlogz );   
-    j_c1_b0.push_back( C1_b0(curjet) );
-    j_c1_b1.push_back( C1_b1(curjet) );
-    j_c1_b2.push_back( C1_b2(curjet) );
-    j_c2_b1.push_back( C2_b1(curjet) );
-    j_c2_b2.push_back( C2_b2(curjet) );
+    if (!jet_has_no_particles){
 
-    double cur_e1_b1 = ECF_E1_b1(curjet);
-    double cur_e1_b2 = ECF_E1_b2(curjet);
-    double cur_e2_b1 = ECF_E2_b1(curjet);
-    double cur_e2_b2 = ECF_E2_b2(curjet);
-    double cur_e3_b1 = ECF_E3_b1(curjet);
-    double cur_e3_b2 = ECF_E3_b2(curjet);
-    j_d2_b1.push_back( cur_e3_b1 * pow(cur_e1_b1,3) / pow(cur_e2_b1,3) );
-    j_d2_b2.push_back( cur_e3_b2 * pow(cur_e1_b1,3) / pow(cur_e2_b2,3) );
-    
-    j_mass_trim.push_back( trimmer1( curjet ).m() );
-    j_mass_prun.push_back( pruner1( curjet ).m() );    
-    j_mass_mmdt.push_back( soft_drop_mmdt( curjet ).m() );
-    j_mass_sdb2.push_back( soft_drop_sdb2( curjet ).m() );
-    j_mass_sdm1.push_back( soft_drop_sdm1( curjet ).m() );
-    
-    j_multiplicity.push_back( (float) curjet.constituents().size() );
+        // N-subjettiness
+        j_tau1_b1.push_back( nSub1KT_b1(curjet) );        
+        j_tau2_b1.push_back( nSub2KT_b1(curjet) );        
+        j_tau3_b1.push_back( nSub3KT_b1(curjet) );        
+        j_tau1_b2.push_back( nSub1KT_b2(curjet) );        
+        j_tau2_b2.push_back( nSub2KT_b2(curjet) );  
+        j_tau3_b2.push_back( nSub3KT_b2(curjet) );  
+        j_tau21_b1.push_back( nSub2KT_b1(curjet) / nSub1KT_b1(curjet) );
+        j_tau21_b2.push_back( nSub2KT_b2(curjet) / nSub1KT_b2(curjet) );
+        j_tau32_b1.push_back( nSub3KT_b1(curjet) / nSub2KT_b1(curjet) );
+        j_tau32_b2.push_back( nSub3KT_b2(curjet) / nSub2KT_b2(curjet) );
+        
+        // Z log Z
+        float zlogz = 0.;
+        for (int i = 0; i < curjet.constituents().size(); i++){
+            float conste = curjet.constituents().at(i).e()/curjet.e();
+            zlogz += conste * log(conste);
+        }
 
+        // energy correlator     
+        j_zlogz.push_back( zlogz );   
+        j_c1_b0.push_back( C1_b0(curjet) );
+        j_c1_b1.push_back( C1_b1(curjet) );
+        j_c1_b2.push_back( C1_b2(curjet) );
+        j_c2_b1.push_back( C2_b1(curjet) );
+        j_c2_b2.push_back( C2_b2(curjet) );
+
+        double cur_e1_b1 = ECF_E1_b1(curjet);
+        double cur_e1_b2 = ECF_E1_b2(curjet);
+        double cur_e2_b1 = ECF_E2_b1(curjet);
+        double cur_e2_b2 = ECF_E2_b2(curjet);
+        double cur_e3_b1 = ECF_E3_b1(curjet);
+        double cur_e3_b2 = ECF_E3_b2(curjet);
+        j_d2_b1.push_back( cur_e3_b1 * pow(cur_e1_b1,3) / pow(cur_e2_b1,3) );
+        j_d2_b2.push_back( cur_e3_b2 * pow(cur_e1_b1,3) / pow(cur_e2_b2,3) );
+        
+        j_mass_trim.push_back( trimmer1( curjet ).m() );
+        j_mass_prun.push_back( pruner1( curjet ).m() );    
+        j_mass_mmdt.push_back( soft_drop_mmdt( curjet ).m() );
+        j_mass_sdb2.push_back( soft_drop_sdb2( curjet ).m() );
+        j_mass_sdm1.push_back( soft_drop_sdm1( curjet ).m() );
+        
+        j_multiplicity.push_back( (float) curjet.constituents().size() );
+
+    }
+    else{
+
+        // N-subjettiness
+        j_tau1_b1.push_back( -99 );        
+        j_tau2_b1.push_back( -99 );        
+        j_tau1_b2.push_back( -99 );        
+        j_tau2_b2.push_back( -99 );  
+        j_tau21_b1.push_back( -99 );
+        j_tau21_b2.push_back( -99 );
+        
+        // energy correlator     
+        j_zlogz.push_back( -99 );
+        j_c1_b0.push_back( -99 );
+        j_c1_b1.push_back( -99 );
+        j_c1_b2.push_back( -99 );
+        j_c2_b1.push_back( -99 );
+        j_c2_b2.push_back( -99 );
+
+        j_d2_b1.push_back( -99 );
+        j_d2_b2.push_back( -99 );
+        
+        j_mass_trim.push_back( -99 );
+        j_mass_prun.push_back( -99 );
+        j_mass_mmdt.push_back( -99 );
+        j_mass_sdb2.push_back( -99 );
+        j_mass_sdm1.push_back( -99 );
+        
+        j_multiplicity.push_back( -99 );
+
+    }
 }
 
 
