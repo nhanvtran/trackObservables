@@ -29,12 +29,12 @@ parser.add_option('--treeName',action="store",type="string",dest="treeName",defa
 sampleDir = '/uscms_data/d2/ntran/physics/FCC/trackObservablesStudy/trackObservables/processing/prod-Jun14'
 #/uscms_data/d2/ntran/physics/FCC/trackObservablesStudy/trackObservables/processing/testdat/';
 # weightDir = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/weights';
-# plotDir   = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/plots';	
+# plotDir   = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/plots';
 weightDir = './weights';
-eosweightdir = '/store/user/cvernier/SubROC/training/weights/';
-if options.makeROCs and options.interactive: 
-#	weightDir = '/uscms_data/d3/cvernier/Substrucure-ROC/analysis/training/weights';
-	weightDir = './weights';	
+eosweightdir = '/store/user/ecoleman/SubROC/training/weights/';
+if options.makeROCs and options.interactive:
+#	weightDir = '/uscms_data/d3/ecoleman/Substrucure-ROC/analysis/training/weights';
+	weightDir = './weights';
 plotDir   = './plots';
 
 def condorize(command,tag):
@@ -60,12 +60,12 @@ def condorize(command,tag):
 		# setup environment
 		f1.write("source /cvmfs/cms.cern.ch/cmsset_default.sh \n");
 		f1.write("set SCRAM_ARCH=slc6_amd64_gcc481\n")
-		f1.write("cd /uscms_data/d3/cvernier/Substrucure-ROC/CMSSW_7_2_0/src/ \n")
+		f1.write("cd /uscms_data/d3/ecoleman/Substrucure-ROC/CMSSW_7_2_0/src/ \n")
 		f1.write("eval `scramv1 runtime -sh`\n")
-        # copy over all stuff and run 
+        # copy over all stuff and run
 		f1.write("cd - \n");
 		if options.doTraining: f1.write("mkdir weights \n")
-		if options.makeROCs: 
+		if options.makeROCs:
 			f1.write("mkdir plots \n")
 			f1.write("for file in /eos/uscms/%s/o_%s.tar.gz; \n" % (eosweightdir,tag));
 			f1.write("do \n");
@@ -81,11 +81,11 @@ def condorize(command,tag):
 		if options.doTraining:
 			f1.write("tar -cvzf %s_%s.tar.gz weights \n" % (prefix,tag))
 			f1.write("tar -cvzf %s_%s.tar.gz *.root \n" % (prefixR,tag))
-			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/cvernier/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,prefix,tag));
-			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/cvernier/SubROC/training/%s_%s.tar.gz \n" % (prefixR,tag,prefixR,tag));
-		if options.makeROCs: 
+			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/ecoleman/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,prefix,tag));
+			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/ecoleman/SubROC/training/%s_%s.tar.gz \n" % (prefixR,tag,prefixR,tag));
+		if options.makeROCs:
 			f1.write("tar -cvzf %s_%s.tar.gz plots \n" % (prefix,tag))
-			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/cvernier/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,prefix,tag));
+			f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/ecoleman/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,prefix,tag));
 		f1.write("rm *.py *.pyc *.tar.gz *.C *.root \n");
 		f1.close()
 
@@ -121,19 +121,19 @@ if __name__ == '__main__':
 	#masses = ['500','1000','1500','2000'];
 	masses = ['1']#,'1000','1500'];
 	# masses = ['500','1500'];
-	for m in signalsname: 
+	for m in signalsname:
 			signals.append( m+"-"+"pt1" );
 
 	# signals = ['GjjjjN1_GjjjjN1__1000_'];
 	# backgrounds = ['ttbar','znunu','allBkg'];
 
-	# vs. 
-	# backgrounds = ['allBkg'];	
+	# vs.
+	# backgrounds = ['allBkg'];
 	# backgrounds = ['allBkg'];
 	#backgrounds = ['ttbar','allBkg'];
 	backgroundsname = ['qq','gg']
 	backgrounds = []
-	for m in  backgroundsname: 
+	for m in  backgroundsname:
 			 backgrounds.append( m+"-"+"pt1" );
 	# backgrounds = ['QCD']
 	# backgrounds = ['Wjets','QCD','znunu'];
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 	else :
 	     observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
 	     observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-	
+
 	#"j_zlogz[0]
 
 
@@ -161,22 +161,22 @@ if __name__ == '__main__':
 			for bkg in backgrounds:
 					obsList = '';
 			                if sig == bkg: continue
-			                if ( sig == "qq-pt1" or sig == "gg-pt1" ) and ( bkg == "qq-pt1" or bkg == "gg-pt1" ) : 
+			                if ( sig == "qq-pt1" or sig == "gg-pt1" ) and ( bkg == "qq-pt1" or bkg == "gg-pt1" ) :
 			                  Observables = observablesQG
-			                else : Observables = observables	
+			                else : Observables = observables
 			                for iObs in range(len(Observables)):
-                                            if iObs != len(Observables)-1: 
+                                            if iObs != len(Observables)-1:
 							tmp = Observables[iObs]
 				#			tmp2= tmp.replace('[','')
 				#			tmp3 = tmp2.replace(']','')
 							obsList += tmp + ";";
-                                            else: 
+                                            else:
 						tmp = Observables[iObs]
                                                 #tmp2= tmp.replace('[','')
                                                 #tmp3 = tmp2.replace(']','')
 						obsList += tmp;
-					
-		
+
+
 					command = "python analysis.py -b ";
 					command += " --sampleDir " + sampleDir;
 					command += " --weightDir " + weightDir;
@@ -201,15 +201,15 @@ if __name__ == '__main__':
 						os.system(command);
 						print("here")
 					else:
-						if not os.path.isfile(filestring) and options.cleaning: 
+						if not os.path.isfile(filestring) and options.cleaning:
 							jobctr+=1;
 							condorize(command,tag);
 							print("here1")
-						if not options.cleaning: 
-							jobctr+=1; 
+						if not options.cleaning:
+							jobctr+=1;
 							condorize(command,tag);
 							print("here2")
-						time.sleep(0.1) # delays for 5 seconds					
+						time.sleep(0.1) # delays for 5 seconds
 
 	## make roc
 	if options.makeROCs:
@@ -242,18 +242,18 @@ if __name__ == '__main__':
 
 				filestring = "%s/plots_bdtg_%s/RocSummary_%s.txt" % (plotDir,tagbase,tagbase);
 				#print filestring
-				# print tag;	
+				# print tag;
 				# condorize(command,tag);
 				if options.interactive:
 					print "interactively: ", command, tagbase
 					os.system(command);
 				else:
-					if not os.path.isfile(filestring) and options.cleaning: 
+					if not os.path.isfile(filestring) and options.cleaning:
 						jobctr+=1;
 						condorize(command,tagbase);
-					if not options.cleaning: 
-						jobctr+=1; 
+					if not options.cleaning:
+						jobctr+=1;
 						condorize(command,tagbase);
-					time.sleep(0.1) # delays for 5 seconds					
+					time.sleep(0.1) # delays for 5 seconds
 
 	print "total jobs = ", jobctr;
