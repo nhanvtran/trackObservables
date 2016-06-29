@@ -157,7 +157,7 @@ if __name__ == '__main__':
             # if label in currentFilesInDir: continue;
 
     # perform training, if requested
-    observableSets.append( observableContainer(sigFN,bkgFN,variables,cuts,labelbase,curweightloc) );
+    observableSets.append( observableContainer(sigFN,bkgFN,variables,cuts,labelbase,options.treeName,curweightloc) );
     if options.doTraining: observableSets[0].doTraining();
     observableSets[0].readMVA("BDTG");
     h_bdts.append( [ROOT.TH1F("hsbdt_"+labelbase,"au; "+labelbase+";",100000,-1,1), ROOT.TH1F("hbbdt_"+labelbase,"au; "+labelbase+";",100000,-1,1) ] );

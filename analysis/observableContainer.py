@@ -23,19 +23,19 @@ from utilities import *
 class observableContainer:
 
 	# -------------------------------------
-	def __init__(self,signame,bkgname,variables,cuts,label,weightloc='weights',MVAMethod="BDTG"):
+	def __init__(self,signame,bkgname,variables,cuts,label,treeName,weightloc='weights',MVAMethod="BDTG"):
 
 		self._f_sig = ROOT.TFile(signame);
-		self._f_bkg = ROOT.TFile(bkgname);    
-		self._t_sig = self._f_sig.Get("t_tragam");
-		self._t_bkg = self._f_bkg.Get("t_tragam");
+		self._f_bkg = ROOT.TFile(bkgname);
+		self._t_sig = self._f_sig.Get(treeName);
+		self._t_bkg = self._f_bkg.Get(treeName);
 
 		self._discVariables = variables;#,"MHT","nJets_30"];
 
 		#tmva cut
 		self._cutstring = "(";
 		cutctr = 0;
-		for cut in cuts: 
+		for cut in cuts:
 			self._cutstring += "(" + cut[0] + " > " + str(cut[1]) + ") && (" + cut[0] + " < " + str(cut[2]) + ")"
 			if cutctr < len(cuts) - 1: self._cutstring += "&&";
 			cutctr+=1;

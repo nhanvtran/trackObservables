@@ -26,10 +26,10 @@ python analysis/launchJobs.py -b --doTraining --makeROCs --treeName t_allpar
 
 Input files are assumed to have the form `<prefix>-<type>-<ptfix>-<postfix>.root`. Unless specified otherwise, the defaults for these tags are:
 
- - prefix : processed-pythia82-lhc13, change with --prefix
- - type : no default, but can be e.g. qq, tt, WW, ZZ, gg
- - ptfix : pt1, change with --ptfix
- - postfix : 50k, change with --postfix
+ - prefix : `processed-pythia82-lhc13`, change with `--prefix`
+ - type : no default, but can be e.g. `qq`, `tt`, `WW`, `ZZ`, `gg`
+ - ptfix : `pt1`, change with `--ptfix`
+ - postfix : `50k`, change with `--postfix`
 
 Individual trainings can be run **locally** via `analysis.py`. The following will produce one of the BDTs produced in the condor implementation:
 
@@ -51,11 +51,13 @@ To reiterate, `--prefix` and `--postfix` will specify the input root files to pu
 To plot ROCs from trainings:
 
 ```
-$ root -l
+$ root -l -b
 [0] .L analysis/plotROC.C
-[1] plotROC(input1, label1, input2, label2, ..., inputN, labelN) 
+[1] plotROC(input1, label1, input2, label2, ..., inputN, labelN, outputName) 
 [2] .q
 ```
+
+To get separation information from BDT trainings (condor only), run `python getSeparationTXT.py` from the directory where you launched the condor jobs. This will output `.txt` files with the desired tables. 
 
 ###plotting
 

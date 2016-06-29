@@ -82,14 +82,8 @@ def condorize(command,tag):
         f1.write("	tar -xvzf $filebase \n");
         f1.write("done \n");
 
-    startdir="root://cmseos.fnal.gov///store/user/ecoleman/TrackObservablesStudy/trackObservables/analysis"
-    f1.write("xrdcp %s/analysis.py . \n" % (startdir));
-    f1.write("xrdcp %s/observableContainer.py . \n" % (startdir));
-    f1.write("xrdcp %s/summaryPlots.py . \n" % (startdir));
-    f1.write("xrdcp %s/TMVAhelper.py . \n" % (startdir));
-    f1.write("xrdcp %s/utilities.py . \n" % (startdir));
-    f1.write("xrdcp %s/launchJobs.py . \n" % (startdir));
-    f1.write("xrdcp %s/tdrstyle.C . \n" % (startdir));
+    f1.write("cp %s/*.py . \n" % (startdir));
+    f1.write("cp %s/tdrstyle.C . \n" % (startdir));
 
     f1.write("ls \n");
     f1.write(command+" \n")
@@ -151,15 +145,15 @@ if __name__ == '__main__':
     observables = [];
     observablesQG = [];
     if options.treeName=="t_allpar":
-        #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-       #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-       observables=["j_tau2_b1[0]","j_tau2_b2[0]","j_tau3_b1[0]","j_tau3_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-       observablesQG=["j_tau2_b1[0]","j_tau2_b2[0]","j_tau3_b1[0]","j_tau3_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+        observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+        observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+       #observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+       #observablesQG=["j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
     else :
-       #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-         #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-         observables=["j_tau2_b1[0]","j_tau2_b2[0]","j_tau3_b1[0]","j_tau3_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-         observablesQG=["j_zlogz[0]","j_tau2_b1[0]","j_tau2_b2[0]","j_tau3_b1[0]","j_tau3_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+        observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+        observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+        # observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+         #observablesQG=["j_zlogz[0]","j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
 
 
 
@@ -193,6 +187,7 @@ if __name__ == '__main__':
                 command += " --plotDir "   + plotDir;
                 command += " --sigTag "    + sig;
                 command += " --bkgTag "    + bkg;
+                command += " --treeName "   + options.treeName;
                 command += " --prefix "    + options.prefix;
                 command += " --postfix "   + options.postfix;
                 command += " --userOverride "   + options.userOverride;
@@ -242,6 +237,7 @@ if __name__ == '__main__':
                 command += " --plotDir "   + plotDir;
                 command += " --sigTag "    + sig;
                 command += " --bkgTag "    + bkg;
+                command += " --treeName "   + options.treeName;
                 command += " --prefix "    + options.prefix;
                 command += " --postfix "   + options.postfix;
                 command += " --userOverride "   + options.userOverride;

@@ -2,9 +2,17 @@
 #include <TFile.h>
 #include <TCanvas.h>
 
+// drawing utils
 TLegend *leg  = new TLegend(0.15625,0.621654,0.4765625,0.803839,NULL,"brNDC");
 TCanvas *cROC = new TCanvas("cROC","cROC",700,700);
 bool isFirst = true;
+
+// style utils
+std::vector<int> colors = { kBlue+1, kGreen+2, kRed+2, kOrange, kMagenta, kYellow, kViolet, kCyan };
+int iColor = 0;
+int sColor = 0;
+int iCMax = colors.size();
+bool dotted = false;
 
 // recursion base case: draw and save
 void plotROC() {
@@ -12,14 +20,40 @@ void plotROC() {
     cROC->Print("roc_.png");
     cROC->SetLogy();
     cROC->Print("roc_log.png");
+    
+    leg->Clear();
+    cROC->SetLogy(0);
+    cROC->Clear();
+
+    iColor = 0;
+    sColor = 0;
+    dotted = false;
+
+    isFirst = true;
+}
+
+void plotROC(TString filename) {
+    leg->Draw();
+    cROC->Print("roc_"+filename+".png");
+    cROC->SetLogy();
+    cROC->Print("roc_log_"+filename+".png");
+    
+    leg->Clear();
+    cROC->SetLogy(0);
+    cROC->Clear();
+
+    iColor = 0;
+    sColor = 0;
+    dotted = false;
+
     isFirst = true;
 }
 
 template<typename... Args>
 void plotROC(TString input, TString label, Args... moreLabels) { 
 
-    //TFile * _file0 = new TFile("TMVA_sL_optimized.rooVt");
-    //TFile * _file1 = new TFile ("TMVA_QCD_BBvsGSP_fat.root");
+    dotted = ( sColor % 2 != 0 );
+
     if(isFirst) {
         // base style
         gROOT->SetStyle("Plain");
@@ -44,7 +78,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         TFile * file = new TFile(input);
         TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetTitle("");
-        MVA_BDTG_effBvsS->SetLineColor(kBlue+1);
+        MVA_BDTG_effBvsS->SetLineColor(colors.at(0));
+        MVA_BDTG_effBvsS->SetLineStyle(kSolid); 
         MVA_BDTG_effBvsS->SetLineWidth(3);
 
         MVA_BDTG_effBvsS->GetXaxis()->SetTitle("Signal efficiency");
@@ -62,11 +97,25 @@ void plotROC(TString input, TString label, Args... moreLabels) {
     } else { 
         TFile * file = new TFile(input);
         TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
-        MVA_BDTG_effBvsS->SetLineColor(kGreen+2);
+        MVA_BDTG_effBvsS->SetLineColor(colors.at(iColor)+0*sColor);
+        if(dotted) { 
+            MVA_BDTG_effBvsS->SetLineStyle(kDotted); 
+            MVA_BDTG_effBvsS->SetMarkerStyle(kDot); 
+            MVA_BDTG_effBvsS->SetMarkerSize(4); 
+        } else { 
+            MVA_BDTG_effBvsS->SetLineStyle(kSolid); 
+        }
         MVA_BDTG_effBvsS->SetLineWidth(3);
         MVA_BDTG_effBvsS->Draw("same");
-        leg->AddEntry(MVA_BDTG_effBvsS, label, "l");
+        leg->AddEntry(MVA_BDTG_effBvsS, label, (dotted ? "lp" : "l"));
     }
+
+    iColor++;
+
+    if(iColor == iCMax) {
+        iColor=0;
+        sColor += 1;
+    } 
 
     // continue to call while there are extra args
     isFirst = false;
