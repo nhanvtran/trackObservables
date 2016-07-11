@@ -76,6 +76,7 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
         // plot first ROC
         TFile * file = new TFile(input);
+        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
         TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetTitle("");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(0));
@@ -96,6 +97,7 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         leg->AddEntry(MVA_BDTG_effBvsS, label,"l");
     } else { 
         TFile * file = new TFile(input);
+        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
         TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(iColor)+0*sColor);
         if(dotted) { 
@@ -119,6 +121,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
     // continue to call while there are extra args
     isFirst = false;
-    plotROC(moreLabels...);
+
+    justPlotNext:
+        plotROC(moreLabels...);
 
 }
