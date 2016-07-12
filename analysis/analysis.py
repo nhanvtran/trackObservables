@@ -38,7 +38,7 @@ parser.add_option('--sigTag',action="store",type="string",dest="sigTag",default=
 parser.add_option('--bkgTag',action="store",type="string",dest="bkgTag",default="gg-pt5")
 parser.add_option('--weightDir',action="store",type="string",dest="weightDir",default="/store/user/${USER}/SubROC/training/weights")
 parser.add_option('--userOverride',action="store",type="string",dest="userOverride",default="")
-parser.add_option('--prefix',action="store",type="string",dest="prefix",default="processed-pythia82-fcc100")
+parser.add_option('--prefix',action="store",type="string",dest="prefix",default="processed-pythia82-lhc13")
 parser.add_option('--postfix',action="store",type="string",dest="postfix",default="50k")
 parser.add_option('--plotDir',action="store",type="string",dest="plotDir",default="/store/user/${USER}/SubROC/training/plots")
 parser.add_option('--treeName',action="store",type="string",dest="treeName",default="t_tragam")
@@ -92,13 +92,35 @@ if __name__ == '__main__':
 #	cuts.append( ["MHT",200,99999] );
 #	cuts.append( ["NJets",1,99] );
 
-    allVariables = ["njets","j_ptfrac[0]","j_mass[0]","j_tau1_b1[0]","j_tau2_b1[0]",
-            "j_tau1_b2[0]","j_tau2_b2[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_zlogz[0]",
-            "j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]",
-            "j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]",
-            "j_mass_sdb2[0]","j_mass_sdm1[0]","j_multiplicity[0]"];
-    varlo        = [   0,      0,    0,           0,    0,       0,       0,     0,        -5, -5, -5 ,-5,-5,-5, 0,0,0,0,0,0,0,0,0];
-    varhi        = [9,     1, 500,        300, 300,   300,       300,  1.5,       1.5, 5,5,5,5,5,5,100,100,500,500,500,500,500,120];
+#                   NAME        MIN   MAX
+    MVAvariables = { "njets":    (0 , 9),
+            "j_ptfrac[0]":       (0 , 1),
+            "j_mass[0]":         (0 , 500),
+            "j_tau1_b1[0]":      (0 , 300),
+            "j_tau2_b1[0]":      (0 , 300),
+            "j_tau1_b2[0]":      (0 , 300),
+            "j_tau2_b2[0]":      (0 , 300),
+            "j_tau21_b1[0]":     (0 , 1.5),
+            "j_tau21_b2[0]":     (-5, 1.5),
+            "j_zlogz[0]":        (-5, 5),
+            "j_c1_b0[0]":        (-5, 5),
+            "j_c1_b1[0]":        (-5, 5),
+            "j_c1_b2[0]":        (-5, 5),
+            "j_c2_b1[0]":        (-5, 5),
+            "j_c2_b2[0]":        (0 , 5),
+            "j_d2_b1[0]":        (0 , 100),
+            "j_d2_b2[0]":        (0 , 100),
+            "j_mass_trim[0]":    (0 , 500),
+            "j_mass_mmdt[0]":    (0 , 500),
+            "j_mass_prun[0]":    (0 , 500),
+            "j_mass_sdb2[0]":    (0 , 500),
+            "j_mass_sdm1[0]":    (0 , 500),
+            "j_multiplicity[0]": (0 , 120) }
+
+    allVariables = [(key) for key in MVAvariables]
+    varlo = [(MVAvariables[key][0]) for key in MVAvariables]
+    varhi = [(MVAvariables[key][1]) for key in MVAvariables]
+
     h_variables = [];
     for i in range(len(allVariables)):
         h_variables.append( [ROOT.TH1F("hs_"+allVariables[i],"au; "+allVariables[i]+";",20,varlo[i],varhi[i]), ROOT.TH1F("hb_"+allVariables[i],"au; "+allVariables[i]+";",20,varlo[i],varhi[i]) ] );
@@ -117,6 +139,8 @@ if __name__ == '__main__':
     h_bdts = [];
     tagbase = "%s_%s_%s" % (sigName,bkgName,treeName);
     labelbase = "bdtg_%s_%s_%s" % (sigName,bkgName,treeName);
+
+    # make ROC dir
     curodir = odir + "/" + "plots_" + labelbase;
     if options.makeROCs:
         if not os.path.exists(curodir): os.makedirs(curodir);
@@ -124,6 +148,7 @@ if __name__ == '__main__':
     #for i in range(len(variables)):
     #	for vnames in variables[i]: label += "_" + vnames;
 
+    # make weights dir
     curweightloc = weightloc+"/" + "weights_" + labelbase;
     os.makedirs(curweightloc)
     if options.doTraining:
@@ -131,7 +156,8 @@ if __name__ == '__main__':
             # currentFilesInDir = os.listdir(curweightloc);
             # if label in currentFilesInDir: continue;
 
-    observableSets.append( observableContainer(sigFN,bkgFN,variables,cuts,labelbase,curweightloc) );
+    # perform training, if requested
+    observableSets.append( observableContainer(sigFN,bkgFN,variables,cuts,labelbase,options.treeName,curweightloc) );
     if options.doTraining: observableSets[0].doTraining();
     observableSets[0].readMVA("BDTG");
     h_bdts.append( [ROOT.TH1F("hsbdt_"+labelbase,"au; "+labelbase+";",100000,-1,1), ROOT.TH1F("hbbdt_"+labelbase,"au; "+labelbase+";",100000,-1,1) ] );
