@@ -94,6 +94,8 @@ make
 ```
 Inputs are name of the input file, file tag, first event, last event
 
+## Add code for condorizing the ntuplization...
+
 
 
 
