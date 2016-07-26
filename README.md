@@ -67,5 +67,37 @@ Utilities to get formatted control plots from ntuples. Samples available at `/us
 
 Scripts to generate ntuples.
 
+```
+#Install Fastjet and Fastjet contrib, go to any place you want
+mkdir fastjet
+cd fastjet
+curl -O http://fastjet.fr/repo/fastjet-3.1.3.tar.gz 
+tar zxvf fastjet-3.1.3.tar.gz
+cd fastjet-3.1.3/
+./configure --prefix=$PWD/../fastjet-install
+make 
+make check
+make install
+cd ..
+http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
+cd fjcontrib-1.021
+./configure --fastjet-config=/Users/ntran/Documents/Research/Ext/VHEPP/VHEPPStudies/fastjet/fastjet-install/bin/fastjet-config
+make 
+make check
+make install
+```
+
+Then in `processing/Makefile` set `FASTJETLOCATION` to wherever you installed fastjet(/contrib).
+```
+make
+./anaSubstructure pythia82-fcc100-gg-pt5-50k 0 0 10000
+```
+Inputs are name of the input file, file tag, first event, last event
+
+
+
+
+
+
 
 
