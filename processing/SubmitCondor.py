@@ -2,14 +2,16 @@ import os,sys
 from optparse import OptionParser
 import math
 
+pwd=os.environ['PWD']
+
 # get options
 parser = OptionParser(description='Submit condor jobs for anaSubstructure calls.')
 parser.add_option('--indir',      action='store', dest='indir',      default="",    help='Input LHE sample directory')
 parser.add_option('--outdir',     action='store', dest='outdir',     default="./",  help='Location of output directory')
 parser.add_option('--evPerJob',   action='store', dest='evPerJob',   default=10000, help='Number of events to run over in each job')
 parser.add_option('--maxEvents',  action='store', dest='maxEvents',  default=50000, help='Number of events in each input sample')
-parser.add_option('--anaSubLoc',  action='store', dest='anaSubLoc',  default="/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/anaSubstructure",   help='Location of anaSubstructure')
-parser.add_option('--fastJetLoc', action='store', dest='fastJetLoc', default="/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/fastjet/fastjet-install/",   help='Location of fastjet-install')
+parser.add_option('--anaSubLoc',  action='store', dest='anaSubLoc',  default="%s/anaSubstructure"%(pwd),            help='Location of anaSubstructure')
+parser.add_option('--fastJetLoc', action='store', dest='fastJetLoc', default="%s/fastjet/fastjet-install/"%(pwd),   help='Location of fastjet-install')
 
 (options, args) = parser.parse_args()
 cmssw_base = os.environ['CMSSW_BASE']
