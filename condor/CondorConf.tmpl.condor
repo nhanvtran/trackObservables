@@ -1,0 +1,8 @@
+universe = vanilla
+Executable = OUTPUT_PATH/NAME.sh
+Should_Transfer_Files = YES
+WhenToTransferOutput = ON_EXIT
+Output = OUTPUT_PATH/NAME.stdout
+Error = OUTPUT_PATH/NAME.stderr
+Log = OUTPUT_PATH/NAME.condorlog
+Queue 1

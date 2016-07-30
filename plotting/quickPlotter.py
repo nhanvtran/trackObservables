@@ -119,9 +119,17 @@ plotsnames = [
         ('j_c1_b0',        "; C_{1}^{#beta=0};",             20, 0, 0.5),
         ('j_c1_b1',        "; C_{1}^{#beta=1};",             20, 0, 0.5),
         ('j_c1_b2',        "; C_{1}^{#beta=2};",             20, 0, 0.5),
+        ('j_c2_b1',        "; C_{2}^{#beta=1};",             20, 0, 0.5),
+        ('j_c2_b2',        "; C_{2}^{#beta=2};",             20, 0, 0.5),
+        ('j_d2_b1',        "; D_{2}^{#beta=1};",             20, 0, 0.5),
+        ('j_d2_b2',        "; D_{2}^{#beta=2};",             20, 0, 0.5),
         ('j_multiplicity', "; multiplicity;",                40, 0, 200),
         ('j_mass',         "; mass (GeV);",                  40, 0, 300),
         ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      40, 0, 200),
+        ('j_mass_sdb2',    "; m_{SD}^{#beta=2} (GeV);",      40, 0, 200),
+        ('j_mass_prun',    "; m_{prun} (GeV);",              40, 0, 200),
+        ('j_mass_sdm1',    "; m_{SD}^{#beta=1} (GeV);",      40, 0, 200),
+        ('j_mass_trim',    "; m_{trim} (GeV);",              40, 0, 200),
         ('j_zlogz',        "; #Sigma z logz;",               28, -6, 1),
         ('j_tau1_b1',      "; N-subjettiness 1, #beta=1;",   100, 0, 150),
         ('j_tau2_b1',      "; N-subjettiness 2, #beta=1;",   100, 0, 150),
@@ -228,7 +236,7 @@ def fillHistograms(hs,t1,tag,applyPtFrac=False):
                     #    quit();
                 FilledOnce=True
                 #print  "--filling!"
-                t1.Draw("(%s[0]*%s)>>%s"%(entry.GetName(),(wt if entry.GetName() in branchesToWeight else "1"),hs[i].GetName()));
+                t1.Draw("(%s[0]/%s)>>%s"%(entry.GetName(),(wt if entry.GetName() in branchesToWeight else "1"),hs[i].GetName()));
 
 
 def declareHistograms(hs,tag,info1,info2):

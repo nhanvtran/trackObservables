@@ -6,6 +6,7 @@
 #include "THStack.h"
 #include "TCanvas.h"
 #include "TLorentzVector.h"
+#include "TF1.h"
 #include <cmath>
 #include "TTree.h"
 #include <iostream>
@@ -93,40 +94,55 @@ std::vector<float> j_mass_sdb2;
 std::vector<float> j_mass_sdm1;
 std::vector<float> j_multiplicity;
 
+// 211, -211: PI+, PI-
+// 3122, -3122: Lambda 
+// 22: photons
+// 130: K0L
+// 310: K0S
+// 321, -321: K+,K-
+// 2212: proton
+// 2112: neutron
+// 3112, 3222: Sigma-, Sigma+
+// 3322: Xi0
+// 3312: Xi-     
+std::vector<int> c_ids = {211,-211,321,-321,2212,-2212,3112,-3112,3222,-3222,3312,-3312};
+std::vector<int> p_ids = {22,111};
+std::vector<int> n_ids = {3122,-3122,130,310,2112,-2112,3322,-3322};
+std::vector<int> l_ids = {-11,11,-13,13,-15,15};
+
+int activeAreaRepeats = 1;
+double ghostArea = 0.01;
+double ghostEtaMax = 7.0;
+    
 void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar);
 void declareBranches(TTree* t);
 void clearVectors();
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 
+// smearing functions
+void smearJetPt(fastjet::PseudoJet jet);
+fastjet::PseudoJet discretizeJet(fastjet::PseudoJet jet);
+
 ////////////////////-----------------------------------------------
 
 int main (int argc, char **argv) {
     
-    std::cout << "hello world!" << std::endl;
-
-    std::string type = argv[1];   // type "gg" or "qq"
-    // int bin = atoi(argv[2]);
-    // int binp1 = bin+100;          // pt bin
-    // int min = atoi(argv[3]);      // events to run over
-    // int max = atoi(argv[4]);      // events to run over
-    // std::string tag = argv[5];
-    // float rVal = atof(argv[6]);
+    std::string type  = argv[1];   // type "gg" or "qq"
+    std::string indir = argv[2];   // where to find input files 
+    int min = atoi(argv[3]);      // events to run over
+    int max = atoi(argv[4]);      // events to run over
+    int tag = atoi(argv[5]);      // index for condorizing 
     
     RPARAM = 0.8;
 
     char inName[192];
-    // //sprintf( inName, "dataProcessedFinal/LHEFiles/%s-pt%04i-%04i-100k.lhe", type.c_str(), bin, bin+100 );
-    // // sprintf( inName, "dataProcessedFinal/LHEFiles/%s.lhe", type.c_str() );
-    // sprintf( inName, "%s.lhe",type.c_str() );
-    sprintf( inName, "/uscmst1b_scratch/lpc1/3DayLifetime/ntran/fromMarat/%s.lhe",type.c_str() );
+    sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
     LHEF::Reader reader(ifsbkg) ;
 
     char outName[192];
-    sprintf( outName, "processed-%s.root", type.c_str() );
-    // int rInt = (int) (rVal*10.);
-    // sprintf( outName, "dataProcessedFinalSCOT/boost2013-%s-pt%04i-%04i%s_ak%02i.root", type.c_str(), bin, bin+100, tag.c_str(), rInt );
+    sprintf(outName, "processed-%s-%i.root", type.c_str(), tag);
     TFile *f = TFile::Open(outName,"RECREATE");
     TTree *t_tracks = new TTree("t_tracks","Tree with vectors");
     TTree *t_tragam = new TTree("t_tragam","Tree with vectors");
@@ -142,9 +158,10 @@ int main (int argc, char **argv) {
     while ( reader.readEvent () ) {
         
         ++evtCtr;
+        if (evtCtr < min) continue;
+        if (evtCtr > max) break;
+        
         if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
-        if (evtCtr < 0) continue;
-        if (evtCtr > 50000) break;
         
         // per event
         particles.clear();
@@ -164,6 +181,7 @@ int main (int argc, char **argv) {
             }   
 
         }
+
         analyzeEvent( particles, t_tracks, t_tragam, t_allpar );        
     }
     
@@ -181,15 +199,8 @@ int main (int argc, char **argv) {
 
 void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar){
     
-    // std::cout << "analyzing event..." << std::endl;
-
     // recluster on the fly....
     fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, RPARAM);    
-    
-    int activeAreaRepeats = 1;
-    double ghostArea = 0.01;
-    double ghostEtaMax = 7.0;
-    
     fastjet::GhostedAreaSpec fjActiveArea(ghostEtaMax,activeAreaRepeats,ghostArea);
     fastjet::AreaDefinition fjAreaDefinition( fastjet::active_area, fjActiveArea );
     
@@ -266,6 +277,7 @@ void declareBranches( TTree* t ){
     t->Branch("j_multiplicity"   , &j_multiplicity   );
 
 }
+
 // ----------------------------------------------------------------------------------
 void clearVectors(){
     j_pt.clear();
@@ -298,50 +310,44 @@ void clearVectors(){
     j_mass_sdm1.clear();
     j_multiplicity.clear();
 }
+
 // ----------------------------------------------------------------------------------
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
-    // 211, -211: PI+, PI-
-    // 3122, -3122: Lambda 
-    // 22: photons
-    // 130: K0L
-    // 310: K0S
-    // 321, -321: K+,K-
-    // 2212: proton
-    // 2112: neutron
-    // 3112, 3222: Sigma-, Sigma+
-    // 3322: Xi0
-    // 3312: Xi-     
-
-    std::vector<int> c_ids = {211,-211,321,-321,2212,-2212,3112,-3112,3222,-3222,3312,-3312};
-    std::vector<int> p_ids = {22,111};
-    std::vector<int> n_ids = {3122,-3122,130,310,2112,-2112,3322,-3322};
-    std::vector<int> l_ids = {-11,11,-13,13,-15,15};
 
     // recluster on the fly....
     fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, RPARAM);    
     
-    int activeAreaRepeats = 1;
-    double ghostArea = 0.01;
-    double ghostEtaMax = 7.0;
-    
     fastjet::GhostedAreaSpec fjActiveArea(ghostEtaMax,activeAreaRepeats,ghostArea);
-    fastjet::AreaDefinition fjAreaDefinition( fastjet::active_area, fjActiveArea );
+    fastjet::AreaDefinition  fjAreaDefinition( fastjet::active_area, fjActiveArea );
 
     // std::cout << "old jet pt = " << jet.pt() << ", and particle content flag = " << particleContentFlag << std::endl;
 
     fastjet::PseudoJet curjet;  
     std::vector< fastjet::PseudoJet > newparticles;
     bool jet_has_no_particles = false;
-    if (particleContentFlag == 0) curjet = jet;
-    if (particleContentFlag > 0){
+    if (particleContentFlag == 0) { 
+        curjet = discretizeJet(jet);
+        smearJetPt(curjet);
+    }
+    else if (particleContentFlag > 0) {
 
+        std::vector< fastjet::PseudoJet > discretePar;
+        discretePar = discretizeJet(jet).constituents();
+        
         // make a new set of particles
-        for (int j = 0; j < jet.constituents().size(); j++){
+        for (int j = 0; j < discretePar.size(); j++){
             // std::cout << "pdg ids = " << jet.constituents().at(j).user_index() << std::endl;
-            if (std::find(c_ids.begin(), c_ids.end(), jet.constituents().at(j).user_index()) != c_ids.end()) newparticles.push_back(jet.constituents().at(j));
-            if (std::find(p_ids.begin(), p_ids.end(), jet.constituents().at(j).user_index()) != p_ids.end() && particleContentFlag == 2) newparticles.push_back(jet.constituents().at(j));
+            if (std::find(c_ids.begin(), c_ids.end(), discretePar.at(j).user_index()) != c_ids.end()) {
+                newparticles.push_back(discretePar.at(j));
+            }
+
+            if (std::find(p_ids.begin(), p_ids.end(), discretePar.at(j).user_index()) != p_ids.end() 
+                    && particleContentFlag == 2) {
+                newparticles.push_back(discretePar.at(j));
+            }
         }
+
         // std::cout << "now cluster these particles " << newparticles.size() << std::endl;
         if (newparticles.size() > 0){
             // cluster them
@@ -351,8 +357,9 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
             // std::cout << "now fill " << out_jets.size() <<  std::endl;
             // fill into curjet
             curjet = out_jets[0];
+            smearJetPt(curjet);
         }
-        else{
+        else {
             curjet = fastjet::PseudoJet(0,0,0,0);
             jet_has_no_particles = true;
         }
@@ -372,8 +379,8 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     fastjet::contrib::SoftDrop soft_drop_sdm1(-1.0, zcut_sd, mu_sd);
     
     // n-subjettiness    
-    double beta = 1; // power for angular dependence, e.g. beta = 1 --> linear k-means, beta = 2 --> quadratic/classic k-means
-    double R0 = RPARAM; // Characteristic jet radius for normalization              
+    double beta = 1;      // power for angular dependence, e.g. beta = 1 --> linear k-means, beta = 2 --> quadratic/classic k-means
+    double R0   = RPARAM; // Characteristic jet radius for normalization              
     double Rcut = RPARAM; // maximum R particles can be from axis to be included in jet   
     // beta = 1                   
     fastjet::contrib::Nsubjettiness nSub1KT_b1(1, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(1));
@@ -400,19 +407,19 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     fastjet::contrib::EnergyCorrelator ECF_E3_b2 (3,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
 
     j_pt.push_back( curjet.pt() );
-    j_ptfrac.push_back( curjet.pt()/jet.pt() );
     j_eta.push_back( curjet.eta() );
     j_mass.push_back( curjet.m() );                
+    j_ptfrac.push_back( curjet.pt()/jet.pt() );
 
     if (!jet_has_no_particles){
 
         // N-subjettiness
-        j_tau1_b1.push_back( nSub1KT_b1(curjet) );        
-        j_tau2_b1.push_back( nSub2KT_b1(curjet) );        
-        j_tau3_b1.push_back( nSub3KT_b1(curjet) );        
-        j_tau1_b2.push_back( nSub1KT_b2(curjet) );        
-        j_tau2_b2.push_back( nSub2KT_b2(curjet) );  
-        j_tau3_b2.push_back( nSub3KT_b2(curjet) );  
+        j_tau1_b1.push_back(  nSub1KT_b1(curjet) );        
+        j_tau2_b1.push_back(  nSub2KT_b1(curjet) );        
+        j_tau3_b1.push_back(  nSub3KT_b1(curjet) );        
+        j_tau1_b2.push_back(  nSub1KT_b2(curjet) );        
+        j_tau2_b2.push_back(  nSub2KT_b2(curjet) );  
+        j_tau3_b2.push_back(  nSub3KT_b2(curjet) );  
         j_tau21_b1.push_back( nSub2KT_b1(curjet) / nSub1KT_b1(curjet) );
         j_tau21_b2.push_back( nSub2KT_b2(curjet) / nSub1KT_b2(curjet) );
         j_tau32_b1.push_back( nSub3KT_b1(curjet) / nSub2KT_b1(curjet) );
@@ -451,7 +458,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_multiplicity.push_back( (float) curjet.constituents().size() );
 
     }
-    else{
+    else {
 
         // N-subjettiness
         j_tau1_b1.push_back( -99 );        
@@ -468,7 +475,6 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_c1_b2.push_back( -99 );
         j_c2_b1.push_back( -99 );
         j_c2_b2.push_back( -99 );
-
         j_d2_b1.push_back( -99 );
         j_d2_b2.push_back( -99 );
         
@@ -483,4 +489,71 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     }
 }
 
+// ----------------------------------------------------------------------------------
+void smearJetPt(fastjet::PseudoJet jet) {
+    static TF1 *smearDist = new TF1("smearGaussian","gaus",0,10000);
 
+    smearDist->SetParameter(0, 1);  // doesn't matter; GetRandom normalizes TF1 
+    smearDist->SetParameter(1, jet.pt());
+    smearDist->SetParameter(2, 1/sqrt(jet.E()));
+   
+    float smearedPt = smearDist->GetRandom();
+
+    jet*=smearedPt/jet.pt();
+}
+
+// ----------------------------------------------------------------------------------
+fastjet::PseudoJet discretizeJet(fastjet::PseudoJet jet) {
+
+    static fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, RPARAM);    
+    static fastjet::GhostedAreaSpec fjActiveArea(ghostEtaMax,activeAreaRepeats,ghostArea);
+    static fastjet::AreaDefinition fjAreaDefinition( fastjet::active_area, fjActiveArea );
+    std::vector< fastjet::PseudoJet > newPar;
+    
+    // collect constituents
+    for(int iConst=0; iConst < jet.constituents().size(); iConst++) {
+        fastjet::PseudoJet constituent = jet.constituents().at(iConst);
+        
+        if(iConst==0) {
+            newPar.push_back(constituent);
+            continue;
+        }
+
+        int nMatches=0;
+        std::vector<int> matchIdx;
+    
+        // figure out how many discretized tracks are within
+        // a cone of DR=sqrt(2)*0.1 around the current jet
+        for(int iNew=0; iNew < newPar.size(); iNew++) {
+            fastjet::PseudoJet newConst = newPar.at(iNew); 
+
+            double dEta = constituent.eta() - newConst.eta(); 
+            double dPhi = constituent.phi() - newConst.phi();
+
+            if(sqrt(dEta*dEta + dPhi*dPhi) < 0.1) {
+                nMatches++;
+                matchIdx.push_back(iNew);
+            }
+        }
+
+        // split the current jet equally among
+        // matched discretized tracks, or create new track 
+        if(nMatches==0) {
+            newPar.push_back(constituent);
+        } 
+        else {
+            for(int iNew=0; iNew < matchIdx.size(); iNew++) {
+                // copy jet, do not modify reference object
+                fastjet::PseudoJet tConst = fastjet::PseudoJet(jet.constituents().at(matchIdx.at(iNew)));
+                tConst/=nMatches;
+                newPar[iNew]+=tConst; 
+            }
+        }
+    }
+
+    // create jet and be done
+    fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newPar, jetDef, fjAreaDefinition);
+    std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01)); 
+
+    return out_jets[0];
+}

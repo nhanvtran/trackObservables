@@ -1,7 +1,7 @@
 # ----------------------------------------
 # inputs 
 
-FASTJETLOCATION=./fastjet-install
+FASTJETLOCATION=./fastjet/fastjet-install
 FASTJETINC :=`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 FASTJETLIB :=`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 
