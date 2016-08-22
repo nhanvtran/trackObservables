@@ -25,6 +25,7 @@ parser.add_option('-b', action='store_true', dest='noX', default=False, help='no
 parser.add_option('--mixCategories', action='store_true', dest='mixCats', default=False, help='no X11 windows')
 parser.add_option('--logPlots', action='store_false', dest='makeLogPlots', default=True, help='make log plots')
 parser.add_option('-i', action='store', dest='files', default="", help='file list of inputs ("parton,file,category;...")')
+parser.add_option('-o', action='store', dest='outdir',default="./plots/", help='where to store plotting output')
 
 (options, args) = parser.parse_args()
 
@@ -46,7 +47,7 @@ files=[('q','../testSamples/processed-pythia82-lhc13-qq-pt1-50k.root','pt1'),
         ('g','../testSamples/processed-pythia82-fcc100-gg-pt5-50k.root','pt5'),
         ('t','../testSamples/processed-pythia82-fcc100-tt-pt5-50k.root','pt5'),
         ('W','../testSamples/processed-pythia82-fcc100-WW-pt5-50k.root','pt5'),
-        ('Z','../testSamples/processed-pythia82-fcc100-ZZ-pt5-50k.root','pt5')] if options.files=="" else options.files.split(';').split(',');
+        ('Z','../testSamples/processed-pythia82-fcc100-ZZ-pt5-50k.root','pt5')] if options.files=="" else [(x.split(',')[0],x.split(',')[1],x.split(',')[2]) for x in options.files.split(';')];
 
 # MECHANISM FOR MODIFYING OPTIONS FOR LOTS OF PLOTS
 # - keep in mind that the order matters and is not necessarily the one you input
@@ -99,13 +100,13 @@ newPlotLimits= {
     "[W,g,t,Z,q];;[W,g,t,Z,q];;pt5;;pt5;;[tracks,allpar,tragam];;j_pt$": (325,0,7500),
 
     # JET MASS
-    "[W,g,t,Z,q];;[g,t,q];;pt1;;pt1;;[tracks,allpar,tragam];;j_mass_[^m]": (350,0,350),
-    "[W];;[Z];;pt1;;pt1;;[tracks,allpar,tragam];;j_mass_[^m]": (175,0,175),
-    "[q];;[W,g,t,Z,q];;pt5;;pt5;;[tracks,allpar,tragam];;j_mass_[^m]": (250,0,500),
-    "[g,t];;[W,g,t,Z,q];;pt5;;pt5;;[tracks,allpar,tragam];;j_mass_[^m]": (300,0,600),
+    "[W,g,t,Z,q];;[g,t,q];;pt1;;pt1;;[tracks,allpar,tragam];;j_mass_[^m]": (700,0,350),
+    "[W];;[Z];;pt1;;pt1;;[tracks,allpar,tragam];;j_mass_[^m]": (350,0,175),
+    "[q];;[W,g,t,Z,q];;pt5;;pt5;;[tracks,allpar,tragam];;j_mass_[^m]": (500,0,500),
+    "[g,t];;[W,g,t,Z,q];;pt5;;pt5;;[tracks,allpar,tragam];;j_mass_[^m]": (600,0,600),
 
     # JET MASS MMDT
-    "[t];;[W,g,t,Z,q];;pt;;pt;;[tracks,allpar,tragam];;j_mass_mmdt": (50,0,250)
+    "[t];;[W,g,t,Z,q];;pt;;pt;;[tracks,allpar,tragam];;j_mass_mmdt": (100,0,250)
 }
 
 
@@ -124,12 +125,12 @@ plotsnames = [
         ('j_d2_b1',        "; D_{2}^{#beta=1};",             20, 0, 0.5),
         ('j_d2_b2',        "; D_{2}^{#beta=2};",             20, 0, 0.5),
         ('j_multiplicity', "; multiplicity;",                40, 0, 200),
-        ('j_mass',         "; mass (GeV);",                  40, 0, 300),
-        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      40, 0, 200),
-        ('j_mass_sdb2',    "; m_{SD}^{#beta=2} (GeV);",      40, 0, 200),
-        ('j_mass_prun',    "; m_{prun} (GeV);",              40, 0, 200),
-        ('j_mass_sdm1',    "; m_{SD}^{#beta=1} (GeV);",      40, 0, 200),
-        ('j_mass_trim',    "; m_{trim} (GeV);",              40, 0, 200),
+        ('j_mass',         "; mass (GeV);",                  80, 0, 300),
+        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      80, 0, 200),
+        ('j_mass_sdb2',    "; m_{SD}^{#beta=2} (GeV);",      80, 0, 200),
+        ('j_mass_prun',    "; m_{prun} (GeV);",              80, 0, 200),
+        ('j_mass_sdm1',    "; m_{SD}^{#beta=1} (GeV);",      80, 0, 200),
+        ('j_mass_trim',    "; m_{trim} (GeV);",              80, 0, 200),
         ('j_zlogz',        "; #Sigma z logz;",               28, -6, 1),
         ('j_tau1_b1',      "; N-subjettiness 1, #beta=1;",   100, 0, 150),
         ('j_tau2_b1',      "; N-subjettiness 2, #beta=1;",   100, 0, 150),
@@ -294,13 +295,13 @@ def makeCanvas(hs,legs,name):
     leg.Draw();
 
     c.SetLogy(0);
-    c.SaveAs("plots/"+name+".pdf");
-    c.SaveAs("plots/"+name+".png");
+    c.SaveAs(options.outdir+"/"+name+".pdf");
+    c.SaveAs(options.outdir+"/"+name+".png");
 
     if options.makeLogPlots :
         c.SetLogy(1);
-        c.SaveAs("plots/"+name+"_log.pdf");
-        c.SaveAs("plots/"+name+"_log.png");
+        c.SaveAs(options.outdir+"/"+name+"_log.pdf");
+        c.SaveAs(options.outdir+"/"+name+"_log.png");
 
 ########################################################################################################################
 if __name__ == '__main__':
