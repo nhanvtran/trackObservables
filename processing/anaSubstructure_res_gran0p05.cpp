@@ -129,7 +129,6 @@ void clearVectors();
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 
 // smearing functions
-TRandom3 *smearDist;
 void smearJetPt(fastjet::PseudoJet jet);
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
 
@@ -144,7 +143,6 @@ int main (int argc, char **argv) {
     int tag = atoi(argv[5]);      // index for condorizing 
     
     RPARAM = 0.8;
-    smearDist = new TRandom3();
 
     char inName[192];
     sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
@@ -326,8 +324,10 @@ void clearVectors(){
 // ----------------------------------------------------------------------------------
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
-    // for reclustering on the fly....
+
+    // recluster on the fly....
     fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, RPARAM);    
+    
     fastjet::GhostedAreaSpec fjActiveArea(ghostEtaMax,activeAreaRepeats,ghostArea);
     fastjet::AreaDefinition  fjAreaDefinition( fastjet::active_area, fjActiveArea );
 
@@ -337,14 +337,14 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     std::vector< fastjet::PseudoJet > newparticles;
     bool jet_has_no_particles = false;
     if (particleContentFlag == 0) { 
-        curjet = jet;
+        curjet = discretizeJet(jet,true)[0];
         jet_has_no_particles = curjet[0]==0 && curjet[1]==0 && 
                                curjet[2]==0 && curjet[3]==0;
     }
     else if (particleContentFlag > 0) {
 
         std::vector< fastjet::PseudoJet > discretePar;
-        discretePar = jet.constituents(); 
+        discretePar = discretizeJet(jet,false);
         
         // make a new set of particles
         for (int j = 0; j < discretePar.size(); j++){
@@ -500,6 +500,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
 // ----------------------------------------------------------------------------------
 void smearJetPt(fastjet::PseudoJet jet) {
+    static TRandom3 *smearDist = new TRandom3();
 
     Double_t energyResolution=0;
     for(auto& it: ids) { 
@@ -544,19 +545,24 @@ std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet,
     static fastjet::AreaDefinition  fjAreaDefinition( fastjet::active_area, fjActiveArea );
     static Double_t etaMin = -10,
                     etaMax = 10,
-                    etaRes = 0.005,
+                    etaRes = 0.05,
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.005; 
+                    phiRes = 0.05; 
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
     
-    std::map<TString,std::pair<TH2D*,TH2D*>> resolutionHistos =
+    static std::map<TString,std::pair<TH2D*,TH2D*>> resolutionHistos =
     { { "n" , std::pair<TH2D*,TH2D*>(new TH2D("","",etaNBins,etaMin,etaMax,
                                                     phiNBins,phiMin,phiMax),
                                      new TH2D("","",etaNBins,etaMin,etaMax,
                                                     phiNBins,phiMin,phiMax)) } };
 
+    for(auto& it: resolutionHistos) {
+        if(it.second.first == 0) continue;
+        it.second.first->Reset();
+        it.second.second->Reset();
+    }
 
     std::vector< fastjet::PseudoJet > newPar;
     
@@ -589,9 +595,9 @@ std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet,
 
     // build new constituents
     for(auto& it: resolutionHistos) {
-        if (it.second.first == 0) continue;
-        TH2D* EHisto = it.second.first;
-        TH2D* pTHisto= it.second.second;
+        if (resolutionHistos[it.first].first == 0) continue;
+        TH2D* EHisto =resolutionHistos[it.first].first;
+        TH2D* pTHisto=resolutionHistos[it.first].second;
 
         // loop over bins
         for(int iEta=1; iEta <= etaNBins; iEta++) {
@@ -614,13 +620,6 @@ std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet,
             newPar.push_back(newConst);
         }}
 
-        delete EHisto;
-        delete pTHisto;
-    }
-    
-    for(auto& it: resolutionHistos) {
-        delete it.second.first;
-        delete it.second.second;
     }
 
     // build jet or just return constituents
@@ -628,7 +627,6 @@ std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet,
         if(newPar.size() > 0) {
             fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newPar, jetDef, fjAreaDefinition);
             std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));
-            thisClustering->delete_self_when_unused();
             return out_jets;
         } else {
             fastjet::PseudoJet nulljet = fastjet::PseudoJet(0,0,0,0);
