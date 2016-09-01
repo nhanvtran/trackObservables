@@ -1,7 +1,7 @@
 # ----------------------------------------
 # inputs 
 
-FASTJETLOCATION=./fastjet/fastjet-install
+FASTJETLOCATION=/uscms_data/d2/ntran/physics/FCC/fastjet/fastjet-install
 FASTJETINC :=`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 FASTJETLIB :=`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 

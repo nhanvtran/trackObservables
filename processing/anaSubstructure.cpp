@@ -130,8 +130,9 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 
 // smearing functions
 TRandom3 *smearDist;
-void smearJetPt(fastjet::PseudoJet jet);
+void smearJetPt(fastjet::PseudoJet &jet);
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles );
 
 ////////////////////-----------------------------------------------
 
@@ -147,7 +148,8 @@ int main (int argc, char **argv) {
     smearDist = new TRandom3();
 
     char inName[192];
-    sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
+    // sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
+    sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
     LHEF::Reader reader(ifsbkg) ;
@@ -165,7 +167,7 @@ int main (int argc, char **argv) {
 
     // evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
-
+    std::vector < fastjet::PseudoJet > newparticles;
     // loop over events
     while ( reader.readEvent () ) {
         
@@ -195,7 +197,12 @@ int main (int argc, char **argv) {
 
         }
 
-        analyzeEvent( particles, t_tracks, t_tragam, t_allpar );        
+        // discretize neutral hadrons
+        bool discretize = 1;
+        if (discretize) newparticles = discretizeEvent(particles);
+        else newparticles = particles;
+        // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
+        analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
     }
     
     std::cout << "finish loop" << std::endl;
@@ -499,7 +506,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 }
 
 // ----------------------------------------------------------------------------------
-void smearJetPt(fastjet::PseudoJet jet) {
+void smearJetPt(fastjet::PseudoJet &jet) {
 
     Double_t energyResolution=0;
     for(auto& it: ids) { 
@@ -523,19 +530,87 @@ void smearJetPt(fastjet::PseudoJet jet) {
         }
     }
 
-    Double_t smearedPt = smearDist->Gaus(1,energyResolution);
-    //std::cout << "\t\tsmearPt = " << smearedPt << std::endl;
-    //std::cout << "\t\told px,pyp,pz,e,jetm = " << jet.px() << "," << jet.py() << "," << jet.pz() << "," << jet.e() << "," << jet.m() << std::endl;
+    
+    float resFudgeFactor = 5.;
+    bool nosmear = 1;
+    Double_t smearedPt = smearDist->Gaus(1,energyResolution*resFudgeFactor);
+    if (nosmear) smearedPt = 1.;
 
     jet.reset_momentum(jet.px() * smearedPt,
                        jet.py() * smearedPt,
                        jet.pz() * smearedPt,
-                        jet.e() * smearedPt);
+                       jet.e()  * smearedPt);
 
-    //std::cout << "\t\tnew px,pyp,pz,e,jetm = " << jet.px() << "," << jet.py() << "," << jet.pz() << "," << jet.e() << "," << jet.m() << std::endl;
 }
 
 // ----------------------------------------------------------------------------------
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles)
+{
+
+    static Double_t etaMin = -10,
+                    etaMax = 10,
+                    etaRes = 0.05,
+                    phiMin = 0, 
+                    phiMax = 2*TMath::Pi(),
+                    phiRes = 0.05;
+    static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
+                 phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
+
+    TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
+    // TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",10,etaMin,etaMax,10,phiMin,phiMax);                   
+
+    std::vector<fastjet::PseudoJet> newparticles;
+    for (unsigned int i = 0; i < particles.size(); ++i){
+        // newparticles.push_back( fastjet::PseudoJet(particles[i]) );
+        for(auto& it: ids) { 
+            std::vector<int> tidSet = it.second;
+
+            if (std::find(tidSet.begin(), tidSet.end(), particles[i].user_index()) != tidSet.end()) {
+                if(it.first=="c" or it.first=="p" or it.first=="l")  
+                {                                   
+                    newparticles.push_back( fastjet::PseudoJet(particles[i]) );
+                    // std::cout << "c par id = " << particles[i].user_index() << std::endl;
+                }
+                else if (it.first=="n"){
+                    double curphi = particles[i].phi();
+                    double cureta = particles[i].eta();
+                    int ieta = hcalGrid->GetXaxis()->FindBin( cureta );
+                    int iphi = hcalGrid->GetYaxis()->FindBin( curphi );
+                    hcalGrid->SetBinContent( ieta,iphi, hcalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
+                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
+                }
+                else {                                                // ------------------------ everything else
+                    std::cout << "WARNING: Input particle has unlisted PDG ID!" << std:: endl;
+                }
+            }
+        }
+    }
+
+    int hcalcellctr = 0;
+    for (int i = 0; i < etaNBins; ++i){
+        for (int j = 0; j < phiNBins; ++j){
+            float curbincontent = hcalGrid->GetBinContent(i+1,j+1);
+            if (curbincontent > 0){ 
+                float celleta = hcalGrid->GetXaxis()->GetBinCenter(i+1);
+                float cellphi = hcalGrid->GetYaxis()->GetBinCenter(j+1);
+                float celle   = hcalGrid->GetBinContent(i+1,j+1);
+                float cellpt  = sqrt(celle*celle*(2*exp(2*celleta))/(1+2*exp(2*celleta)));
+                fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
+                curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
+
+                newparticles.push_back(curcell);
+                hcalcellctr++;
+            }
+            // std::cout << i+1 << "," << j+1 << "," << curbincontent << std::endl;
+        }
+    }
+
+    // std::cout << "hcalcellctr = " << hcalcellctr << std::endl;
+
+    delete hcalGrid;
+    return newparticles;
+}
+
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, 
                                               bool clusterJet) 
 {
