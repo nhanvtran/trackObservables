@@ -594,10 +594,11 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                 float celleta = hcalGrid->GetXaxis()->GetBinCenter(i+1);
                 float cellphi = hcalGrid->GetYaxis()->GetBinCenter(j+1);
                 float celle   = hcalGrid->GetBinContent(i+1,j+1);
-                float cellpt  = sqrt(celle*celle*(2*exp(2*celleta))/(1+2*exp(2*celleta)));
+                // float cellpt  = sqrt(celle*celle*(2*exp(2*celleta))/(1+exp(2*celleta)));
+                float cellpt  = sqrt(2*celle*celle/(1+exp(2*celleta)));
                 fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
                 curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
-
+                // std::cout << "celle = " << celle << ", cellpt = " << cellpt << ", orig e = " << curbincontent << ", cell eta = " << celleta << std::endl;
                 newparticles.push_back(curcell);
                 hcalcellctr++;
             }
