@@ -191,7 +191,7 @@ int main (int argc, char **argv) {
                 fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
                 int pdgid = reader.hepeup.IDUP.at(i);
                 curpar.set_user_index( pdgid );
-                smearJetPt(curpar);
+                //smearJetPt(curpar); // do after discretization instead of here
                 particles.push_back( curpar );
             }   
 
@@ -201,6 +201,9 @@ int main (int argc, char **argv) {
         bool discretize = 1;
         if (discretize) newparticles = discretizeEvent(particles);
         else newparticles = particles;
+        // smear particle momenta
+        for (unsigned int i = 0; i < newparticles.size(); ++i)
+          smearJetPt(newparticles[i]);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
     }
@@ -518,28 +521,26 @@ void smearJetPt(fastjet::PseudoJet &jet) {
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
                 // NOTE: minimize neutral hadron vs. track resolution
-                energyResolution=sqrt(TMath::Min(pow(0.00001*jet.pt()  ,2)+pow(0.005,2),
-                                                 pow(0.38/sqrt(jet.e()),2)+pow(0.01 ,2)));
-                // low pT particles which get caught by the magnetic field are reconstructed with calorimeter
-                //if (jet.pt()<0.2)
-                //    energyResolution=sqrt(pow(0.38/sqrt(jet.e()),2)+pow(0.01,2));
+                energyResolution=sqrt(TMath::Min(pow(0.005*jet.pt()  ,2)+pow(0.005,2), // CMS TDR + worsen resolution at high pT to simulate breakdown of tracking in jet core above pT>200 GeV
+                                                 pow(5./sqrt(jet.e()),2)+pow(0.05 ,2))); // CMS JET JINST + worsen resolution at low pt to account for fact that mutiple hadrons may enter one calorimeter cell and no discretization was done
             } else if (it.first=="p")                               // ---------------------- photon resolution
-                energyResolution=sqrt(pow(0.10/sqrt(jet.e()),2)+pow(0.0075,2));
+                energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2)); // CMS TDR
             else if (it.first=="n")                               // -------------- neutral hadron resolution
-                energyResolution=sqrt(pow(0.38/sqrt(jet.e()),2)+pow(0.01,2));
+                energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
             else if (it.first=="l")                               // ---------------------- lepton resolution
-                energyResolution=sqrt(pow(0.00001*jet.pt(),2)+pow(0.005,2));
+                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
             else {                                                // ------------------------ everything else
                 std::cout << "WARNING: Input jet has unlisted PDG ID!" << std:: endl;
                 energyResolution=0; // assume perfect resolution for everything else (?)
             }
+            // std::cout << it.first << " " << energyResolution << std::endl;
         }
     }
 
-    
-    float resFudgeFactor = 20.;
+    float resFudgeFactor = 1.;
     bool nosmear = 0.;
     Double_t smearedPt = std::max(1e-10,smearDist->Gaus(1,energyResolution*resFudgeFactor));
+
     if (nosmear) smearedPt = 1.;
 
     jet.reset_momentum(jet.px() * smearedPt,
@@ -553,17 +554,21 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles)
 {
 
-    static Double_t etaMin = -10,
-                    etaMax = 10,
-                    etaRes = 0.05,
+    static Double_t etaMin = -5,
+                    etaMax = 5,
+                    etaRes = 0.087, // CMS TDR
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.05;
+                    phiRes = 0.087; // CMS TDR
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
-    // TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",10,etaMin,etaMax,10,phiMin,phiMax);                   
+
+    static Int_t etaNBinsEcal = TMath::Floor((etaMax - etaMin)/0.017), // CMS ECAL JINST
+                 phiNBinsEcal = TMath::Floor((phiMax - phiMin)/0.017); // CMS ECAL JINST
+
+    TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);                   
 
     std::vector<fastjet::PseudoJet> newparticles;
     for (unsigned int i = 0; i < particles.size(); ++i){
@@ -572,7 +577,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
             std::vector<int> tidSet = it.second;
 
             if (std::find(tidSet.begin(), tidSet.end(), particles[i].user_index()) != tidSet.end()) {
-                if(it.first=="c" or it.first=="p" or it.first=="l")  
+                if(it.first=="c" or it.first=="l")  
                 {                                   
                     newparticles.push_back( fastjet::PseudoJet(particles[i]) );
                     // std::cout << "c par id = " << particles[i].user_index() << std::endl;
@@ -583,6 +588,14 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     int ieta = hcalGrid->GetXaxis()->FindBin( cureta );
                     int iphi = hcalGrid->GetYaxis()->FindBin( curphi );
                     hcalGrid->SetBinContent( ieta,iphi, hcalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
+                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
+                }
+                else if (it.first=="p"){
+                    double curphi = particles[i].phi();
+                    double cureta = particles[i].eta();
+                    int ieta = ecalGrid->GetXaxis()->FindBin( cureta );
+                    int iphi = ecalGrid->GetYaxis()->FindBin( curphi );
+                    ecalGrid->SetBinContent( ieta,iphi, ecalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
                     // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
                 }
                 else {                                                // ------------------------ everything else
@@ -601,10 +614,12 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                 float cellphi = hcalGrid->GetYaxis()->GetBinCenter(j+1);
                 float celle   = hcalGrid->GetBinContent(i+1,j+1);
                 // float cellpt  = sqrt(celle*celle*(2*exp(2*celleta))/(1+exp(2*celleta)));
-                float cellpt  = sqrt(2*celle*celle/(1+exp(2*celleta)));
+                // float cellpt  = sqrt(2*celle*celle/(1+exp(2*celleta)));
+                float cellpt = celle*2/(exp(celleta)+exp(-celleta));
                 fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
                 curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
                 // std::cout << "celle = " << celle << ", cellpt = " << cellpt << ", orig e = " << curbincontent << ", cell eta = " << celleta << std::endl;
+                curcell.set_user_index( 130 );
                 newparticles.push_back(curcell);
                 hcalcellctr++;
             }
@@ -614,7 +629,32 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     // std::cout << "hcalcellctr = " << hcalcellctr << std::endl;
 
+    int ecalcellctr = 0;
+    for (int i = 0; i < etaNBinsEcal; ++i){
+        for (int j = 0; j < phiNBinsEcal; ++j){
+            float curbincontent = ecalGrid->GetBinContent(i+1,j+1);
+            if (curbincontent > 0){ 
+                float celleta = ecalGrid->GetXaxis()->GetBinCenter(i+1);
+                float cellphi = ecalGrid->GetYaxis()->GetBinCenter(j+1);
+                float celle   = ecalGrid->GetBinContent(i+1,j+1);
+                // float cellpt  = sqrt(celle*celle*(2*exp(2*celleta))/(1+exp(2*celleta)));
+                // float cellpt  = sqrt(2*celle*celle/(1+exp(2*celleta)));
+                float cellpt = celle*2/(exp(celleta)+exp(-celleta));
+                fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
+                curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
+                // std::cout << "celle = " << celle << ", cellpt = " << cellpt << ", orig e = " << curbincontent << ", cell eta = " << celleta << std::endl;
+                curcell.set_user_index( 111 );
+                newparticles.push_back(curcell);
+                ecalcellctr++;
+            }
+            // std::cout << i+1 << "," << j+1 << "," << curbincontent << std::endl;
+        }
+    }
+
+    // std::cout << "ecalcellctr = " << ecalcellctr << std::endl;
+
     delete hcalGrid;
+    delete ecalGrid;
     return newparticles;
 }
 
