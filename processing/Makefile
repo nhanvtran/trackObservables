@@ -1,7 +1,7 @@
 # ----------------------------------------
 # inputs 
 
-FASTJETLOCATION=/uscms_data/d2/ntran/physics/FCC/fastjet/fastjet-install
+FASTJETLOCATION=/afs/cern.ch/user/h/hinzmann/workspace/Wmass/trackObservables/processing/fastjet/fastjet-install
 FASTJETINC :=`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 FASTJETLIB :=`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 

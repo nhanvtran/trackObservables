@@ -148,8 +148,8 @@ int main (int argc, char **argv) {
     smearDist = new TRandom3();
 
     char inName[192];
-    // sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
-    sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
+    sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
+    // sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
     LHEF::Reader reader(ifsbkg) ;
@@ -367,17 +367,20 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         }
 
         // std::cout << "now cluster these particles " << newparticles.size() << std::endl;
+        std::vector<fastjet::PseudoJet> out_jets;
         if (newparticles.size() > 0){
             // cluster them
             fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newparticles, jetDef, fjAreaDefinition);
-            std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));        
+            out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));        
             
             // std::cout << "now fill " << out_jets.size() <<  std::endl;
             // fill into curjet
-            curjet = out_jets[0];
-            thisClustering->delete_self_when_unused();
+            if(out_jets.size()>0) {
+              curjet = out_jets[0];
+              thisClustering->delete_self_when_unused();
+            } else delete thisClustering;
         }
-        else {
+        if (out_jets.size()==0) {
             curjet = fastjet::PseudoJet(0,0,0,0);
             jet_has_no_particles = true;
         }
@@ -531,8 +534,8 @@ void smearJetPt(fastjet::PseudoJet &jet) {
     }
 
     
-    float resFudgeFactor = 5.;
-    bool nosmear = 1;
+    float resFudgeFactor = 3.;
+    bool nosmear = 0.;
     Double_t smearedPt = smearDist->Gaus(1,energyResolution*resFudgeFactor);
     if (nosmear) smearedPt = 1.;
 
