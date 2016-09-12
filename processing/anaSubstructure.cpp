@@ -516,11 +516,14 @@ void smearJetPt(fastjet::PseudoJet &jet) {
         std::vector<int> tidSet = it.second;
 
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
-            if(it.first=="c")                                     // -------------- charged hadron resolution
+            if(it.first=="c") {                                    // -------------- charged hadron resolution
                 // NOTE: minimize neutral hadron vs. track resolution
                 energyResolution=sqrt(TMath::Min(pow(0.00001*jet.pt()  ,2)+pow(0.005,2),
                                                  pow(0.38/sqrt(jet.e()),2)+pow(0.01 ,2)));
-            else if (it.first=="p")                               // ---------------------- photon resolution
+                // low pT particles which get caught by the magnetic field are reconstructed with calorimeter
+                //if (jet.pt()<0.2)
+                //    energyResolution=sqrt(pow(0.38/sqrt(jet.e()),2)+pow(0.01,2));
+            } else if (it.first=="p")                               // ---------------------- photon resolution
                 energyResolution=sqrt(pow(0.10/sqrt(jet.e()),2)+pow(0.0075,2));
             else if (it.first=="n")                               // -------------- neutral hadron resolution
                 energyResolution=sqrt(pow(0.38/sqrt(jet.e()),2)+pow(0.01,2));
@@ -534,9 +537,9 @@ void smearJetPt(fastjet::PseudoJet &jet) {
     }
 
     
-    float resFudgeFactor = 3.;
+    float resFudgeFactor = 20.;
     bool nosmear = 0.;
-    Double_t smearedPt = smearDist->Gaus(1,energyResolution*resFudgeFactor);
+    Double_t smearedPt = std::max(1e-10,smearDist->Gaus(1,energyResolution*resFudgeFactor));
     if (nosmear) smearedPt = 1.;
 
     jet.reset_momentum(jet.px() * smearedPt,
