@@ -520,9 +520,7 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
-                // NOTE: minimize neutral hadron vs. track resolution
-                energyResolution=sqrt(TMath::Min(pow(0.0001*jet.pt(),2)+pow(0.005,2), // CMS TDR
-                                                 pow(1.20/sqrt(jet.e()),2)+pow(0.05,2))); // CMS JET JINST
+                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
             } else if (it.first=="p")                               // ---------------------- photon resolution
                 energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2)); // CMS TDR
             else if (it.first=="n")                               // -------------- neutral hadron resolution
@@ -573,13 +571,13 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);                   
 
-    static Double_t numberOfPileup = 12;
+    static Double_t numberOfPileup = 0;
     static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
     for (int i = 0; i < etaNBins; ++i)
         for (int j = 0; j < phiNBins; ++j)
             hcalGrid->SetBinContent(i+1,j+1,pileupEnergyInCell);
 
-    static Double_t maxChargedPt=100; // Threshold above which track reconstruction in jet core is expected to fail and charged particles are reconstructed as neutrals
+    static Double_t maxChargedPt=110; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
 
     std::vector<fastjet::PseudoJet> newparticles;
     for (unsigned int i = 0; i < particles.size(); ++i){
