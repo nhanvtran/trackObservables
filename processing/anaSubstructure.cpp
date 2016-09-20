@@ -29,6 +29,11 @@
 #include "fastjet/contrib/SoftDrop.hh"
 #include "fastjet/contrib/DistanceMeasure.hh"
 
+float deltaR (float eta1, float phi1, float eta2, float phi2) {
+    float deta = eta1 - eta2;
+    float dphi = std::abs(phi1-phi2); if (dphi>M_PI) dphi-=2*M_PI;  
+    return sqrt(deta*deta + dphi*dphi);
+}
 
 #include "LHEF.h"
 
@@ -132,7 +137,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 TRandom3 *smearDist;
 void smearJetPt(fastjet::PseudoJet &jet);
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
-std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles );
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal=false, Double_t numberOfPileup=0, Double_t maxChargedPt=1e10, Double_t maxChargedDr=1e10, Double_t trackingEfficiency=1.0);
 
 ////////////////////-----------------------------------------------
 
@@ -142,7 +147,7 @@ int main (int argc, char **argv) {
     std::string indir = argv[2];   // where to find input files 
     int min = atoi(argv[3]);      // events to run over
     int max = atoi(argv[4]);      // events to run over
-    int tag = atoi(argv[5]);      // index for condorizing 
+    std::string tag = argv[5];      // detector type
     
     RPARAM = 0.8;
     smearDist = new TRandom3();
@@ -155,7 +160,7 @@ int main (int argc, char **argv) {
     LHEF::Reader reader(ifsbkg) ;
 
     char outName[192];
-    sprintf(outName, "processed-%s-%i.root", type.c_str(), tag);
+    sprintf(outName, "processed-%s-%s.root", type.c_str(), tag.c_str());
     TFile *f = TFile::Open(outName,"RECREATE");
     f->cd();
     TTree *t_tracks = new TTree("t_tracks","Tree with vectors");
@@ -198,8 +203,13 @@ int main (int argc, char **argv) {
         }
 
         // discretize neutral hadrons
-        bool discretize = 1;
-        if (discretize) newparticles = discretizeEvent(particles);
+        bool discretize = (tag.find("h")!=std::string::npos);
+        static Double_t numberOfPileup=1.*(tag.find("p")!=std::string::npos)+10.*(tag.find("q")!=std::string::npos);
+        static bool discretizeEcal=(tag.find("e")!=std::string::npos);
+        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
+        static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
+        static Double_t trackingEfficiency=(tag.find("r")!=std::string::npos)?0.9:1.0; // Tracking efficiency
+        if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,numberOfPileup, maxChargedPt, maxChargedDr, trackingEfficiency);
         else newparticles = particles;
         // smear particle momenta
         for (unsigned int i = 0; i < newparticles.size(); ++i)
@@ -257,7 +267,9 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
     
     // std::cout << "tracks+photons" << std::endl;
 
-    thisClustering->delete_self_when_unused();
+    if(out_jets.size()>0) {
+       thisClustering->delete_self_when_unused();
+    } else delete thisClustering;
     
     // std::cout << "delete clustering" << std::endl;
 
@@ -549,7 +561,7 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 }
 
 // ----------------------------------------------------------------------------------
-std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles)
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal, Double_t numberOfPileup, Double_t maxChargedPt, Double_t maxChargedDr, Double_t trackingEfficiency)
 {
 
     static Double_t etaMin = -5,
@@ -563,7 +575,6 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
 
-    static bool discretizeEcal = true;
     static Double_t etaResEcal = 0.017, // CMS ECAL JINST
                     phiResEcal = 0.017; // CMS ECAL JINST
     static Int_t etaNBinsEcal = TMath::Floor((etaMax - etaMin)/etaResEcal), // CMS ECAL JINST
@@ -571,13 +582,10 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);                   
 
-    static Double_t numberOfPileup = 0;
     static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
     for (int i = 0; i < etaNBins; ++i)
         for (int j = 0; j < phiNBins; ++j)
             hcalGrid->SetBinContent(i+1,j+1,pileupEnergyInCell);
-
-    static Double_t maxChargedPt=110; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
 
     std::vector<fastjet::PseudoJet> newparticles;
     for (unsigned int i = 0; i < particles.size(); ++i){
@@ -586,18 +594,24 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
             std::vector<int> tidSet = it.second;
 
             if (std::find(tidSet.begin(), tidSet.end(), particles[i].user_index()) != tidSet.end()) {
-                if(((it.first=="c")&&(particles[i].pt()<maxChargedPt)) or it.first=="l" or ((!discretizeEcal) && (it.first=="p")))
+                bool track=(it.first=="c");
+                if(track&&(trackingEfficiency!=1.0)&&(smearDist->Integer(100)>trackingEfficiency*100.0))
+                  track=false;
+                if(track&&(maxChargedDr<10)) {
+                  double cutDr=smearDist->Integer(100)/50.*maxChargedDr;
+                  for (unsigned int j = 0; j < particles.size(); ++j) {
+                    if((i!=j)&&(deltaR(particles[i].eta(),particles[i].phi(),particles[j].eta(),particles[j].phi())<cutDr)) {
+                      track=false;
+                      break;
+                    }
+                  }
+                }
+                if(track&&(maxChargedPt<10000)&&((smearDist->Integer(100)/50.*particles[i].pt()<maxChargedPt)))
+                   track=false;
+                if((track)||(it.first=="l")||((!discretizeEcal) && (it.first=="p")))
                 {                                   
                     newparticles.push_back( fastjet::PseudoJet(particles[i]) );
                     // std::cout << "c par id = " << particles[i].user_index() << std::endl;
-                }
-                else if ((it.first=="n")||(particles[i].pt()>=maxChargedPt)){
-                    double curphi = particles[i].phi();
-                    double cureta = particles[i].eta();
-                    int ieta = hcalGrid->GetXaxis()->FindBin( cureta );
-                    int iphi = hcalGrid->GetYaxis()->FindBin( curphi );
-                    hcalGrid->SetBinContent( ieta,iphi, hcalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
-                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
                 }
                 else if (it.first=="p"){
                     double curphi = particles[i].phi();
@@ -605,6 +619,14 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     int ieta = ecalGrid->GetXaxis()->FindBin( cureta );
                     int iphi = ecalGrid->GetYaxis()->FindBin( curphi );
                     ecalGrid->SetBinContent( ieta,iphi, ecalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
+                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
+                }
+                else if ((it.first=="n")||(!track)){
+                    double curphi = particles[i].phi();
+                    double cureta = particles[i].eta();
+                    int ieta = hcalGrid->GetXaxis()->FindBin( cureta );
+                    int iphi = hcalGrid->GetYaxis()->FindBin( curphi );
+                    hcalGrid->SetBinContent( ieta,iphi, hcalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
                     // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
                 }
                 else {                                                // ------------------------ everything else
@@ -759,7 +781,9 @@ std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet,
         if(newPar.size() > 0) {
             fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newPar, jetDef, fjAreaDefinition);
             std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));
-            thisClustering->delete_self_when_unused();
+            if(out_jets.size()>0) {
+              thisClustering->delete_self_when_unused();
+            } else delete thisClustering;
             return out_jets;
         } else {
             fastjet::PseudoJet nulljet = fastjet::PseudoJet(0,0,0,0);
