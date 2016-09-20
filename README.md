@@ -29,10 +29,11 @@ $ make && make check && make install
 
 For FastJet/contrib:
 $ cd ..
-$ http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
-$ tar zxvf fjcontrib-1.021.tar.gz
-$ cd fjcontrib-1.021
-$ ./configure --fastjet-config=../fastjet-install/bin/fastjet-config
+$ svn checkout http://fastjet.hepforge.org/svn/contrib/trunk fjcontrib
+$ cd fjcontrib/
+$ scripts/update-contribs.sh 
+$ scripts/update-contribs.sh EnergyCorrelator 1.2.0-rc1
+$ ./configure --fastjet-config=$PWD/../fastjet-install/bin/fastjet-config
 $ make && make check && make install
 ```
 

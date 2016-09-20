@@ -92,6 +92,12 @@ std::vector<float> j_c2_b1;
 std::vector<float> j_c2_b2;
 std::vector<float> j_d2_b1;
 std::vector<float> j_d2_b2;
+std::vector<float> j_d2_a1_b1;
+std::vector<float> j_d2_a1_b2;
+std::vector<float> j_n2_b1;
+std::vector<float> j_n2_b2;
+std::vector<float> j_m2_b1;
+std::vector<float> j_m2_b2;
 std::vector<float> j_qjetVol;
 std::vector<float> j_mass_trim;
 std::vector<float> j_mass_mmdt;
@@ -303,6 +309,12 @@ void declareBranches( TTree* t ){
     t->Branch("j_c2_b2"          , &j_c2_b2          );
     t->Branch("j_d2_b1"          , &j_d2_b1          );
     t->Branch("j_d2_b2"          , &j_d2_b2          );
+    t->Branch("j_d2_a1_b1"       , &j_d2_a1_b1       );
+    t->Branch("j_d2_a1_b2"       , &j_d2_a1_b2       );
+    t->Branch("j_m2_b1"          , &j_m2_b1          );
+    t->Branch("j_m2_b2"          , &j_m2_b2          );
+    t->Branch("j_n2_b1"          , &j_n2_b1          );
+    t->Branch("j_n2_b2"          , &j_n2_b2          );
     t->Branch("j_mass_trim"      , &j_mass_trim      );
     t->Branch("j_mass_mmdt"      , &j_mass_mmdt      );
     t->Branch("j_mass_prun"      , &j_mass_prun      );
@@ -336,6 +348,12 @@ void clearVectors(){
     j_c2_b2.clear();
     j_d2_b1.clear();
     j_d2_b2.clear();
+    j_d2_a1_b1.clear();
+    j_d2_a1_b2.clear();
+    j_m2_b1.clear();
+    j_m2_b2.clear();
+    j_n2_b1.clear();
+    j_n2_b2.clear();
     j_qjetVol.clear();
     j_mass_trim.clear();
     j_mass_mmdt.clear();
@@ -427,18 +445,20 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     fastjet::contrib::Nsubjettiness nSub3KT_b2(3, fastjet::contrib::OnePass_KT_Axes(), fastjet::contrib::UnnormalizedMeasure(2));
 
     // ECF
-    fastjet::contrib::EnergyCorrelatorDoubleRatio C1_b0(1,0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelatorDoubleRatio C1_b1(1,1,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelatorDoubleRatio C1_b2(1,2,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelatorDoubleRatio C2_b1(2,1,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelatorDoubleRatio C2_b2(2,2,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C1_b0(1,0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C1_b1(1,1,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C1_b2(1,2,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C2_b1(2,1,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C2_b2(2,2,fastjet::contrib::EnergyCorrelator::pt_R);
 
-    fastjet::contrib::EnergyCorrelator ECF_E1_b1 (1,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelator ECF_E1_b2 (1,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelator ECF_E2_b1 (2,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelator ECF_E2_b2 (2,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelator ECF_E3_b1 (3,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
-    fastjet::contrib::EnergyCorrelator ECF_E3_b2 (3,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorD2 ECF_D2_b1 (1.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorD2 ECF_D2_b2 (2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorGeneralizedD2 ECF_D2_a1_b1 (1.0,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorGeneralizedD2 ECF_D2_a1_b2 (1.0,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorMseries ECF_M2_b1 (2,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorMseries ECF_M2_b2 (2,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorNseries ECF_N2_b1 (2,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    fastjet::contrib::EnergyCorrelatorNseries ECF_N2_b2 (2,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
 
     j_pt.push_back( curjet.pt() );
     j_eta.push_back( curjet.eta() );
@@ -468,20 +488,19 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
         // energy correlator     
         j_zlogz.push_back( zlogz );   
-        j_c1_b0.push_back( C1_b0(curjet) );
-        j_c1_b1.push_back( C1_b1(curjet) );
-        j_c1_b2.push_back( C1_b2(curjet) );
-        j_c2_b1.push_back( C2_b1(curjet) );
-        j_c2_b2.push_back( C2_b2(curjet) );
-
-        double cur_e1_b1 = ECF_E1_b1(curjet);
-        double cur_e1_b2 = ECF_E1_b2(curjet);
-        double cur_e2_b1 = ECF_E2_b1(curjet);
-        double cur_e2_b2 = ECF_E2_b2(curjet);
-        double cur_e3_b1 = ECF_E3_b1(curjet);
-        double cur_e3_b2 = ECF_E3_b2(curjet);
-        j_d2_b1.push_back( cur_e3_b1 * pow(cur_e1_b1,3) / pow(cur_e2_b1,3) );
-        j_d2_b2.push_back( cur_e3_b2 * pow(cur_e1_b1,3) / pow(cur_e2_b2,3) );
+        j_c1_b0.push_back( ECF_C1_b0(curjet) );
+        j_c1_b1.push_back( ECF_C1_b1(curjet) );
+        j_c1_b2.push_back( ECF_C1_b2(curjet) );
+        j_c2_b1.push_back( ECF_C2_b1(curjet) );
+        j_c2_b2.push_back( ECF_C2_b2(curjet) );
+        j_d2_b1.push_back( ECF_D2_b1(curjet) );
+        j_d2_b2.push_back( ECF_D2_b2(curjet) );
+        j_d2_a1_b1.push_back( ECF_D2_a1_b1(curjet) );
+        j_d2_a1_b2.push_back( ECF_D2_a1_b2(curjet) );
+        j_m2_b1.push_back( ECF_M2_b1(curjet) );
+        j_m2_b2.push_back( ECF_M2_b2(curjet) );
+        j_n2_b1.push_back( ECF_N2_b1(curjet) );
+        j_n2_b2.push_back( ECF_N2_b2(curjet) );
         
         j_mass_trim.push_back( trimmer1( curjet ).m() );
         j_mass_prun.push_back( pruner1( curjet ).m() );    
