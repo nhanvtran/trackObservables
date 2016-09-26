@@ -13,7 +13,7 @@ all: anaSubstructure
 
 anaSubstructure: anaSubstructure.cpp
 #	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) -lRecursiveTools -lEnergyCorrelator anaSubstructure.cpp 
-	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) anaSubstructure.cpp -lEnergyCorrelator -lRecursiveTools -lNsubjettiness
+	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) anaSubstructure.cpp -lEnergyCorrelator -lRecursiveTools -lNsubjettiness -lz puppiContainer.cc PU14.cc EventMixer.cc CmdLine.cc ParticleIDMethods.cc ParticleName.cc EventSource.cc zfstream.cc Version.cc
 
 clean:
 	rm anaSubstructure

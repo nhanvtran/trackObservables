@@ -29,6 +29,11 @@
 #include "fastjet/contrib/SoftDrop.hh"
 #include "fastjet/contrib/DistanceMeasure.hh"
 
+#include "CmdLine.hh"
+#include "EventMixer.hh"
+#include "PU14.hh"
+#include "puppiContainer.hh"
+
 float deltaR (float eta1, float phi1, float eta2, float phi2) {
     float deta = eta1 - eta2;
     float dphi = std::abs(phi1-phi2); if (dphi>M_PI) dphi-=2*M_PI;  
@@ -98,6 +103,31 @@ std::vector<float> j_n2_b1;
 std::vector<float> j_n2_b2;
 std::vector<float> j_m2_b1;
 std::vector<float> j_m2_b2;
+
+std::vector<float> j_tau1_b1_mmdt;
+std::vector<float> j_tau2_b1_mmdt;
+std::vector<float> j_tau3_b1_mmdt;
+std::vector<float> j_tau1_b2_mmdt;
+std::vector<float> j_tau2_b2_mmdt;
+std::vector<float> j_tau3_b2_mmdt;
+std::vector<float> j_tau21_b2_mmdt;
+std::vector<float> j_tau21_b1_mmdt;
+std::vector<float> j_tau32_b2_mmdt;
+std::vector<float> j_tau32_b1_mmdt;
+std::vector<float> j_c1_b0_mmdt;
+std::vector<float> j_c1_b1_mmdt;
+std::vector<float> j_c1_b2_mmdt;
+std::vector<float> j_c2_b1_mmdt;
+std::vector<float> j_c2_b2_mmdt;
+std::vector<float> j_d2_b1_mmdt;
+std::vector<float> j_d2_b2_mmdt;
+std::vector<float> j_d2_a1_b1_mmdt;
+std::vector<float> j_d2_a1_b2_mmdt;
+std::vector<float> j_n2_b1_mmdt;
+std::vector<float> j_n2_b2_mmdt;
+std::vector<float> j_m2_b1_mmdt;
+std::vector<float> j_m2_b2_mmdt;
+
 std::vector<float> j_qjetVol;
 std::vector<float> j_mass_trim;
 std::vector<float> j_mass_mmdt;
@@ -175,6 +205,21 @@ int main (int argc, char **argv) {
     declareBranches(t_tracks);
     declareBranches(t_tragam);
     declareBranches(t_allpar);
+  
+    std::vector<string> pufiles;
+    pufiles.push_back("program");
+    pufiles.push_back("-hard");
+    pufiles.push_back("lhc14-pythia8-4C-minbias-nev100.pu14.gz");
+    pufiles.push_back("-pileup");
+    pufiles.push_back("lhc14-pythia8-4C-minbias-nev100.pu14.gz");
+    pufiles.push_back("-npu");
+    pufiles.push_back("20");
+    CmdLine cmdline(pufiles);
+    EventMixer* mixer;
+    
+    if (tag.find("p")!=std::string::npos) {
+      mixer=new EventMixer(&cmdline);
+    }
 
     // evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
@@ -202,24 +247,48 @@ int main (int argc, char **argv) {
                 fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
                 int pdgid = reader.hepeup.IDUP.at(i);
                 curpar.set_user_index( pdgid );
-                //smearJetPt(curpar); // do after discretization instead of here
+                curpar.set_user_info(new PU14(pdgid,-1,-1));
                 particles.push_back( curpar );
             }   
 
         }
 
+        if (tag.find("p")!=std::string::npos) {
+          if (!mixer->next_event()) { // when running out of PU events start from the beginning
+            delete mixer;
+            mixer=new EventMixer(&cmdline);
+            mixer->next_event();
+          }
+          vector<PseudoJet> full_event = mixer->particles() ;
+          vector<PseudoJet> hard_event, pileup_event;
+          SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
+          if (tag.find("i")!=std::string::npos) {
+             puppiContainer curEvent(particles, pileup_event);
+             particles = curEvent.puppiFetch(20);
+             for (unsigned int i = 0; i < particles.size(); ++i)
+               particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
+          } else {
+             for (unsigned int i = 0; i < pileup_event.size(); ++i) {
+               if(pileup_event[i].user_info<PU14>().charge()==0) continue;
+               pileup_event[i].set_user_index( pileup_event[i].user_info<PU14>().pdg_id() );
+               particles.push_back(pileup_event[i]);
+             }
+          }
+        }
+
         // discretize neutral hadrons
         bool discretize = (tag.find("h")!=std::string::npos);
-        static Double_t numberOfPileup=1.*(tag.find("p")!=std::string::npos)+10.*(tag.find("q")!=std::string::npos);
+        static Double_t numberOfPileup=20.*(tag.find("q")!=std::string::npos);
         static bool discretizeEcal=(tag.find("e")!=std::string::npos);
         static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
         static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
-        static Double_t trackingEfficiency=(tag.find("r")!=std::string::npos)?0.9:1.0; // Tracking efficiency
+        static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos)?0.9:1.0; // Tracking efficiency
         if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,numberOfPileup, maxChargedPt, maxChargedDr, trackingEfficiency);
         else newparticles = particles;
         // smear particle momenta
-        for (unsigned int i = 0; i < newparticles.size(); ++i)
-          smearJetPt(newparticles[i]);
+        if (tag.find("r")!=std::string::npos)
+          for (unsigned int i = 0; i < newparticles.size(); ++i)
+            smearJetPt(newparticles[i]);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
     }
@@ -315,6 +384,33 @@ void declareBranches( TTree* t ){
     t->Branch("j_m2_b2"          , &j_m2_b2          );
     t->Branch("j_n2_b1"          , &j_n2_b1          );
     t->Branch("j_n2_b2"          , &j_n2_b2          );
+
+    t->Branch("j_tau1_b1_mmdt"        , &j_tau1_b1_mmdt        );
+    t->Branch("j_tau2_b1_mmdt"        , &j_tau2_b1_mmdt        );
+    t->Branch("j_tau3_b1_mmdt"        , &j_tau3_b1_mmdt        );    
+    t->Branch("j_tau1_b2_mmdt"        , &j_tau1_b2_mmdt        );
+    t->Branch("j_tau2_b2_mmdt"        , &j_tau2_b2_mmdt        );
+    t->Branch("j_tau3_b2_mmdt"        , &j_tau3_b2_mmdt        );    
+    t->Branch("j_tau21_b1_mmdt"       , &j_tau21_b1_mmdt       );
+    t->Branch("j_tau21_b2_mmdt"       , &j_tau21_b2_mmdt       );
+    t->Branch("j_tau21_b1_mmdt"       , &j_tau21_b1_mmdt       );
+    t->Branch("j_tau21_b2_mmdt"       , &j_tau21_b2_mmdt       );
+    t->Branch("j_tau32_b1_mmdt"       , &j_tau32_b1_mmdt       );
+    t->Branch("j_tau32_b2_mmdt"       , &j_tau32_b2_mmdt       );
+    t->Branch("j_c1_b0_mmdt"          , &j_c1_b0_mmdt          );
+    t->Branch("j_c1_b1_mmdt"          , &j_c1_b1_mmdt          );
+    t->Branch("j_c1_b2_mmdt"          , &j_c1_b2_mmdt          );
+    t->Branch("j_c2_b1_mmdt"          , &j_c2_b1_mmdt          );
+    t->Branch("j_c2_b2_mmdt"          , &j_c2_b2_mmdt          );
+    t->Branch("j_d2_b1_mmdt"          , &j_d2_b1_mmdt          );
+    t->Branch("j_d2_b2_mmdt"          , &j_d2_b2_mmdt          );
+    t->Branch("j_d2_a1_b1_mmdt"       , &j_d2_a1_b1_mmdt       );
+    t->Branch("j_d2_a1_b2_mmdt"       , &j_d2_a1_b2_mmdt       );
+    t->Branch("j_m2_b1_mmdt"          , &j_m2_b1_mmdt          );
+    t->Branch("j_m2_b2_mmdt"          , &j_m2_b2_mmdt          );
+    t->Branch("j_n2_b1_mmdt"          , &j_n2_b1_mmdt          );
+    t->Branch("j_n2_b2_mmdt"          , &j_n2_b2_mmdt          );
+
     t->Branch("j_mass_trim"      , &j_mass_trim      );
     t->Branch("j_mass_mmdt"      , &j_mass_mmdt      );
     t->Branch("j_mass_prun"      , &j_mass_prun      );
@@ -354,6 +450,31 @@ void clearVectors(){
     j_m2_b2.clear();
     j_n2_b1.clear();
     j_n2_b2.clear();
+
+    j_tau1_b1_mmdt.clear();
+    j_tau2_b1_mmdt.clear();
+    j_tau3_b1_mmdt.clear();    
+    j_tau1_b2_mmdt.clear();
+    j_tau2_b2_mmdt.clear();
+    j_tau3_b2_mmdt.clear();    
+    j_tau21_b1_mmdt.clear();
+    j_tau21_b2_mmdt.clear();
+    j_tau32_b1_mmdt.clear();
+    j_tau32_b2_mmdt.clear();
+    j_c1_b0_mmdt.clear();
+    j_c1_b1_mmdt.clear();
+    j_c1_b2_mmdt.clear();
+    j_c2_b1_mmdt.clear();
+    j_c2_b2_mmdt.clear();
+    j_d2_b1_mmdt.clear();
+    j_d2_b2_mmdt.clear();
+    j_d2_a1_b1_mmdt.clear();
+    j_d2_a1_b2_mmdt.clear();
+    j_m2_b1_mmdt.clear();
+    j_m2_b2_mmdt.clear();
+    j_n2_b1_mmdt.clear();
+    j_n2_b2_mmdt.clear();
+
     j_qjetVol.clear();
     j_mass_trim.clear();
     j_mass_mmdt.clear();
@@ -501,10 +622,37 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_m2_b2.push_back( ECF_M2_b2(curjet) );
         j_n2_b1.push_back( ECF_N2_b1(curjet) );
         j_n2_b2.push_back( ECF_N2_b2(curjet) );
+
+        // Groomed variables
+        fastjet::PseudoJet mmdtjet=soft_drop_mmdt(curjet);
+
+        j_tau1_b1_mmdt.push_back(  nSub1KT_b1(mmdtjet) );        
+        j_tau2_b1_mmdt.push_back(  nSub2KT_b1(mmdtjet) );        
+        j_tau3_b1_mmdt.push_back(  nSub3KT_b1(mmdtjet) );        
+        j_tau1_b2_mmdt.push_back(  nSub1KT_b2(mmdtjet) );        
+        j_tau2_b2_mmdt.push_back(  nSub2KT_b2(mmdtjet) );  
+        j_tau3_b2_mmdt.push_back(  nSub3KT_b2(mmdtjet) );  
+        j_tau21_b1_mmdt.push_back( nSub2KT_b1(mmdtjet) / nSub1KT_b1(mmdtjet) );
+        j_tau21_b2_mmdt.push_back( nSub2KT_b2(mmdtjet) / nSub1KT_b2(mmdtjet) );
+        j_tau32_b1_mmdt.push_back( nSub3KT_b1(mmdtjet) / nSub2KT_b1(mmdtjet) );
+        j_tau32_b2_mmdt.push_back( nSub3KT_b2(mmdtjet) / nSub2KT_b2(mmdtjet) );
+        j_c1_b0_mmdt.push_back( ECF_C1_b0(mmdtjet) );
+        j_c1_b1_mmdt.push_back( ECF_C1_b1(mmdtjet) );
+        j_c1_b2_mmdt.push_back( ECF_C1_b2(mmdtjet) );
+        j_c2_b1_mmdt.push_back( ECF_C2_b1(mmdtjet) );
+        j_c2_b2_mmdt.push_back( ECF_C2_b2(mmdtjet) );
+        j_d2_b1_mmdt.push_back( ECF_D2_b1(mmdtjet) );
+        j_d2_b2_mmdt.push_back( ECF_D2_b2(mmdtjet) );
+        j_d2_a1_b1_mmdt.push_back( ECF_D2_a1_b1(mmdtjet) );
+        j_d2_a1_b2_mmdt.push_back( ECF_D2_a1_b2(mmdtjet) );
+        j_m2_b1_mmdt.push_back( ECF_M2_b1(mmdtjet) );
+        j_m2_b2_mmdt.push_back( ECF_M2_b2(mmdtjet) );
+        j_n2_b1_mmdt.push_back( ECF_N2_b1(mmdtjet) );
+        j_n2_b2_mmdt.push_back( ECF_N2_b2(mmdtjet) );
         
         j_mass_trim.push_back( trimmer1( curjet ).m() );
         j_mass_prun.push_back( pruner1( curjet ).m() );    
-        j_mass_mmdt.push_back( soft_drop_mmdt( curjet ).m() );
+        j_mass_mmdt.push_back( mmdtjet.m() );
         j_mass_sdb2.push_back( soft_drop_sdb2( curjet ).m() );
         j_mass_sdm1.push_back( soft_drop_sdm1( curjet ).m() );
         
@@ -516,13 +664,17 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         // N-subjettiness
         j_tau1_b1.push_back( -99 );        
         j_tau2_b1.push_back( -99 );        
+        j_tau3_b1.push_back( -99 );        
         j_tau1_b2.push_back( -99 );        
         j_tau2_b2.push_back( -99 );  
+        j_tau3_b2.push_back( -99 );  
         j_tau21_b1.push_back( -99 );
         j_tau21_b2.push_back( -99 );
+        j_tau32_b1.push_back( -99 );
+        j_tau32_b2.push_back( -99 );
         
         // energy correlator     
-        j_zlogz.push_back( -99 );
+        j_zlogz.push_back( -99 );   
         j_c1_b0.push_back( -99 );
         j_c1_b1.push_back( -99 );
         j_c1_b2.push_back( -99 );
@@ -530,6 +682,37 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_c2_b2.push_back( -99 );
         j_d2_b1.push_back( -99 );
         j_d2_b2.push_back( -99 );
+        j_d2_a1_b1.push_back( -99 );
+        j_d2_a1_b2.push_back( -99 );
+        j_m2_b1.push_back( -99 );
+        j_m2_b2.push_back( -99 );
+        j_n2_b1.push_back( -99 );
+        j_n2_b2.push_back( -99 );
+
+        // Groomed variables
+        j_tau1_b1_mmdt.push_back( -99 );        
+        j_tau2_b1_mmdt.push_back( -99 );        
+        j_tau3_b1_mmdt.push_back( -99 );        
+        j_tau1_b2_mmdt.push_back( -99 );	     
+        j_tau2_b2_mmdt.push_back( -99 );  
+        j_tau3_b2_mmdt.push_back( -99 );  
+        j_tau21_b1_mmdt.push_back( -99 );
+        j_tau21_b2_mmdt.push_back( -99 );
+        j_tau32_b1_mmdt.push_back( -99 );
+        j_tau32_b2_mmdt.push_back( -99 );
+        j_c1_b0_mmdt.push_back( -99 );
+        j_c1_b1_mmdt.push_back( -99 );
+        j_c1_b2_mmdt.push_back( -99 );
+        j_c2_b1_mmdt.push_back( -99 );
+        j_c2_b2_mmdt.push_back( -99 );
+        j_d2_b1_mmdt.push_back( -99 );
+        j_d2_b2_mmdt.push_back( -99 );
+        j_d2_a1_b1_mmdt.push_back( -99 );
+        j_d2_a1_b2_mmdt.push_back( -99 );
+        j_m2_b1_mmdt.push_back( -99 );
+        j_m2_b2_mmdt.push_back( -99 );
+        j_n2_b1_mmdt.push_back( -99 );
+        j_n2_b2_mmdt.push_back( -99 );
         
         j_mass_trim.push_back( -99 );
         j_mass_prun.push_back( -99 );
@@ -552,10 +735,14 @@ void smearJetPt(fastjet::PseudoJet &jet) {
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
                 energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
+                //energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
             } else if (it.first=="p")                               // ---------------------- photon resolution
                 energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2)); // CMS TDR
+                //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
             else if (it.first=="n")                               // -------------- neutral hadron resolution
-                energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
+                //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
+                energyResolution=sqrt(pow(1.20/sqrt(6.*jet.e()),2)+pow(6.*0.05,2)); // CMS JET JINST + factor 6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
+                //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
             else if (it.first=="l")                               // ---------------------- lepton resolution
                 energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
             else {                                                // ------------------------ everything else
@@ -583,24 +770,24 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal, Double_t numberOfPileup, Double_t maxChargedPt, Double_t maxChargedDr, Double_t trackingEfficiency)
 {
 
-    static Double_t etaMin = -5,
-                    etaMax = 5,
-                    etaRes = 0.087, // CMS TDR
+    static Double_t etaMin = -3,
+                    etaMax = 3,
+                    etaRes = 0.087/sqrt(12), // CMS TDR, sqrt(12) since particle flow cluster algorithm reaches this precision
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.087; // CMS TDR
+                    phiRes = 0.087/sqrt(12); // CMS TDR, sqrt(12) since particle flow cluster algorithm reaches this precision
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
 
-    static Double_t etaResEcal = 0.017, // CMS ECAL JINST
-                    phiResEcal = 0.017; // CMS ECAL JINST
+    static Double_t etaResEcal = 0.017/sqrt(12), // CMS ECAL JINST, sqrt(12) since particle flow cluster algorithm reaches this precision
+                    phiResEcal = 0.017/sqrt(12); // CMS ECAL JINST, sqrt(12) since particle flow cluster algorithm reaches this precision
     static Int_t etaNBinsEcal = TMath::Floor((etaMax - etaMin)/etaResEcal), // CMS ECAL JINST
                  phiNBinsEcal = TMath::Floor((phiMax - phiMin)/phiResEcal); // CMS ECAL JINST
 
-    TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);                   
-
+    TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);  
+                 
     static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
     for (int i = 0; i < etaNBins; ++i)
         for (int j = 0; j < phiNBins; ++j)
@@ -625,7 +812,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     }
                   }
                 }
-                if(track&&(maxChargedPt<10000)&&((smearDist->Integer(100)/50.*particles[i].pt()<maxChargedPt)))
+                if(track&&(maxChargedPt<10000)&&(particles[i].pt()<maxChargedPt))
                    track=false;
                 if((track)||(it.first=="l")||((!discretizeEcal) && (it.first=="p")))
                 {                                   
