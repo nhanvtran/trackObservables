@@ -772,17 +772,17 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     static Double_t etaMin = -3,
                     etaMax = 3,
-                    etaRes = 0.087/sqrt(12), // CMS TDR, sqrt(12) since particle flow cluster algorithm reaches this precision
+                    etaRes = 0.087/2., // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.087/sqrt(12); // CMS TDR, sqrt(12) since particle flow cluster algorithm reaches this precision
+                    phiRes = 0.087/2.; // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
 
-    static Double_t etaResEcal = 0.017/sqrt(12), // CMS ECAL JINST, sqrt(12) since particle flow cluster algorithm reaches this precision
-                    phiResEcal = 0.017/sqrt(12); // CMS ECAL JINST, sqrt(12) since particle flow cluster algorithm reaches this precision
+    static Double_t etaResEcal = 0.017, // CMS ECAL JINST
+                    phiResEcal = 0.017; // CMS ECAL JINST
     static Int_t etaNBinsEcal = TMath::Floor((etaMax - etaMin)/etaResEcal), // CMS ECAL JINST
                  phiNBinsEcal = TMath::Floor((phiMax - phiMin)/phiResEcal); // CMS ECAL JINST
 
