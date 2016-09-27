@@ -97,7 +97,7 @@ $ ./anaSubstructure pythia82-fcc100-gg-pt5-50k \ # LHE filehandle to look at
                     <location of LHE files> \ 
                     0 \   # index of first event to process
                     0 \   # index of last event to process 
-                    123   # some numeric tag to apply to the output name
+                    rth   # options of detector smearing in random order (r: hcal resolution, t: trackpt-inefficiency, h: hcal-granularity, p: neutral pileup, pi: pileup+PUPPI, e: ecal resolution, u: tracking-efficiency, s: trackDr-inefficiency)
 ```
 
 To run the ntuplizer via Condor (LPC):
