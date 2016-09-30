@@ -21,11 +21,15 @@ parser.add_option('--makeROCs', action='store_true', dest='makeROCs', default=Fa
 parser.add_option('--userOverride', action='store', type="string", dest='userOverride', default="")
 parser.add_option('-i','--interactive', action='store_true', dest='interactive', default=False, help='training or not')
 parser.add_option('--treeName',action="store",type="string",dest="treeName",default="t_tragam")
-parser.add_option('--sigs',action="store",type="string",dest="sigs",default="tt")
-parser.add_option('--bkgs',action="store",type="string",dest="bkgs",default="WW,ZZ,qq,gg")
+parser.add_option('--sigs',action="store",type="string",dest="sigs",default="tt,WW,ZZ,qq,gg")
+parser.add_option('--bkgs',action="store",type="string",dest="bkgs",default="tt,WW,ZZ,qq,gg")
 parser.add_option('--prefix',action="store",type="string",dest="prefix",default="processed-pythia82-lhc13")
 parser.add_option('--postfix',action="store",type="string",dest="postfix",default="50k")
 parser.add_option('--ptfix',action="store",type="string",dest="ptfix",default="pt1")
+parser.add_option('--tmpDir',action="store",type="string",dest="tmpDir",default="tmp")
+parser.add_option('--eosDest',action="store",type="string",dest="eosDest",default="SubROC/training")
+parser.add_option('--vars',action="store",type="string",dest="vars",default="")
+parser.add_option('--QGvars',action="store",type="string",dest="QGvars",default="")
 
 parser.add_option('--sampleDir',action="store",type="string",dest="sampleDir",default="/uscms_data/d2/ntran/physics/FCC/trackObservablesStudy/trackObservables/processing/prod-Jun14")
 
@@ -39,7 +43,7 @@ sampleDir = options.sampleDir
 # weightDir = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/weights';
 # plotDir   = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/plots';
 weightDir = './weights/';
-eosweightdir = '/store/user/%s/SubROC/training/weights/'%(user);
+eosweightdir = '/store/user/%s/%s/weights/'%(user,options.eosDest);
 if options.makeROCs and options.interactive:
     weightDir = './weights';
 plotDir   = './plots';
@@ -54,10 +58,14 @@ def condorize(command,tag):
     if options.makeROCs: prefix = "op";
     if options.makeROCs: prefixR = "opR";
 
+    # mk eos directory for final ouput
+    if not os.path.exists("/eos/uscms/store/user/%s/%s/"%(user,options.eosDest)):
+        os.makedirs("/eos/uscms/store/user/%s/%s"%(user,options.eosDest));
+
     startdir = os.getcwd();
     #change to a tmp dir
-    if not os.path.exists('tmp'): os.makedirs('tmp');
-    os.chdir("tmp");
+    if not os.path.exists(options.tmpDir): os.makedirs(options.tmpDir);
+    os.chdir(options.tmpDir);
     curdir = os.getcwd();
 
     f1n = "tmp_%s.sh" %(tag);
@@ -90,11 +98,11 @@ def condorize(command,tag):
     if options.doTraining:
         f1.write("tar -cvzf %s_%s.tar.gz weights \n" % (prefix,tag))
         f1.write("tar -cvzf %s_%s.tar.gz *.root \n" % (prefixR,tag))
-        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,user,prefix,tag));
-        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/SubROC/training/%s_%s.tar.gz \n" % (prefixR,tag,user,prefixR,tag));
+        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/%s/%s_%s.tar.gz \n" % (prefix,tag,user,options.eosDest,prefix,tag));
+        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/%s/%s_%s.tar.gz \n" % (prefixR,tag,user,options.eosDest,prefixR,tag));
     if options.makeROCs:
         f1.write("tar -cvzf %s_%s.tar.gz plots \n" % (prefix,tag))
-        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/SubROC/training/%s_%s.tar.gz \n" % (prefix,tag,user,prefix,tag));
+        f1.write("xrdcp -f %s_%s.tar.gz root://cmseos.fnal.gov//store/user/%s/%s/%s_%s.tar.gz \n" % (prefix,tag,user,options.eosDest,prefix,tag));
     f1.write("rm *.py *.pyc *.tar.gz *.C *.root \n");
     f1.close()
 
@@ -144,16 +152,39 @@ if __name__ == '__main__':
     # observables.append( "mEff" );
     observables = [];
     observablesQG = [];
-    if options.treeName=="t_allpar":
-        observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-        observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-       #observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-       #observablesQG=["j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+    if not options.vars=="" :
+        observables=options.vars.split(';')
+        if options.QGvars=="":
+            observablesQG=options.vars.split(';')
+        else :
+            observablesQG=options.QGvars.split(';')
     else :
-        observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-        observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-        # observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-         #observablesQG=["j_zlogz[0]","j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+        if options.treeName=="t_allpar":
+            # mass only
+            #observables=["j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+            #observablesQG=["j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+            # shapes only
+            observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c2_b2[0]","j_c2_b1[0]"]
+            observablesQG=["j_zlogz[0]","j_tau1_b1[0]","j_tau1_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_multiplicity"]
+            # original
+            #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+            #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+            # tau32
+           #observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+           #observablesQG=["j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
+        else :
+            # mass only
+            #observables=["j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+            #observablesQG=["j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+            # shapes only
+            observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c2_b2[0]","j_c2_b1[0]"]
+            observablesQG=["j_zlogz[0]","j_tau1_b1[0]","j_tau1_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_multiplicity"]
+            # original
+            #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+            #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+            # tau32
+            # observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
+             #observablesQG=["j_zlogz[0]","j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
 
 
 
