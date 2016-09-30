@@ -1,4 +1,5 @@
-anasubs=(nores_nogran res_nogran resx5_nogran resx100_nogran res_gran0p05 res_gran0p005)
+#anasubs=(nores_nogran res_nogran resx5_nogran resx100_nogran res_gran0p05 res_gran0p005)
+anasubs=(resx100_nogran res_gran0p05 res_gran0p005)
 
 for ana in ${anasubs[*]} ; do
     eval `eos root://cmseos.fnal.gov mkdir /store/user/${USER}/${ana}`

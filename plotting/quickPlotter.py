@@ -26,6 +26,8 @@ parser.add_option('--mixCategories', action='store_true', dest='mixCats', defaul
 parser.add_option('--logPlots', action='store_false', dest='makeLogPlots', default=True, help='make log plots')
 parser.add_option('-i', action='store', dest='files', default="", help='file list of inputs ("parton,file,category;...")')
 parser.add_option('-o', action='store', dest='outdir',default="./plots/", help='where to store plotting output')
+parser.add_option('--ana', action='store', dest='anasub',default="nores_nogran", help='flag to define which anaSubstructure to use')
+parser.add_option('--basedir',action='store',dest='base',default='../testSamples/',help='location of input root files to plot')
 
 (options, args) = parser.parse_args()
 
@@ -38,16 +40,21 @@ parser.add_option('-o', action='store', dest='outdir',default="./plots/", help='
 ########################################################################################################################
 ########################################################################################################################
 
-files=[('q','../testSamples/processed-pythia82-lhc13-qq-pt1-50k.root','pt1'),
-        ('g','../testSamples/processed-pythia82-lhc13-gg-pt1-50k.root','pt1'),
-        ('t','../testSamples/processed-pythia82-lhc13-tt-pt1-50k.root','pt1'),
-        ('W','../testSamples/processed-pythia82-lhc13-WW-pt1-50k.root','pt1'),
-        ('Z','../testSamples/processed-pythia82-lhc13-ZZ-pt1-50k.root','pt1'),
-        ('q','../testSamples/processed-pythia82-fcc100-qq-pt5-50k.root','pt5'),
-        ('g','../testSamples/processed-pythia82-fcc100-gg-pt5-50k.root','pt5'),
-        ('t','../testSamples/processed-pythia82-fcc100-tt-pt5-50k.root','pt5'),
-        ('W','../testSamples/processed-pythia82-fcc100-WW-pt5-50k.root','pt5'),
-        ('Z','../testSamples/processed-pythia82-fcc100-ZZ-pt5-50k.root','pt5')] if options.files=="" else [(x.split(',')[0],x.split(',')[1],x.split(',')[2]) for x in options.files.split(';')];
+anasub="-"+options.anasub if options.anasub != "" else ""
+
+files=[ ('q', '%s/processed-pythia82-lhc13-qq-pt1-50k%s.root'%(options.base,anasub),'pt1'),
+        ('g', '%s/processed-pythia82-lhc13-gg-pt1-50k%s.root'%(options.base,anasub),'pt1'),
+        ('t', '%s/processed-pythia82-lhc13-tt-pt1-50k%s.root'%(options.base,anasub),'pt1'),
+        ('W', '%s/processed-pythia82-lhc13-WW-pt1-50k%s.root'%(options.base,anasub),'pt1'),
+        ('Z', '%s/processed-pythia82-lhc13-ZZ-pt1-50k%s.root'%(options.base,anasub),'pt1'),
+        ('q','%s/processed-pythia82-fcc100-qq-pt5-50k%s.root'%(options.base,anasub),'pt5'),
+        ('g','%s/processed-pythia82-fcc100-gg-pt5-50k%s.root'%(options.base,anasub),'pt5'),
+        ('t','%s/processed-pythia82-fcc100-tt-pt5-50k%s.root'%(options.base,anasub),'pt5'),
+        ('W','%s/processed-pythia82-fcc100-WW-pt5-50k%s.root'%(options.base,anasub),'pt5'),
+        ('Z','%s/processed-pythia82-fcc100-ZZ-pt5-50k%s.root'%(options.base,anasub),'pt5')]
+
+if options.files!="" :
+    files=[(x.split(',')[0],x.split(',')[1],x.split(',')[2]) for x in options.files.split(';')];
 
 # MECHANISM FOR MODIFYING OPTIONS FOR LOTS OF PLOTS
 # - keep in mind that the order matters and is not necessarily the one you input

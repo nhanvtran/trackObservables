@@ -7,7 +7,18 @@ eval `scramv1 runtime -sh`
 cd /uscms_data/d3/${USER}/TrackObservablesStudy/trackObservables/processing/
 
 anasubs=(nores_nogran res_nogran resx5_nogran resx100_nogran res_gran0p05 res_gran0p005)
-filehandles=(processed-pythia82-fcc100-WW-pt5-50k processed-pythia82-lhc13-WW-pt1-50k)
+
+filehandles=(
+processed-pythia82-fcc100-WW-pt5-50k 
+processed-pythia82-lhc13-WW-pt1-50k 
+processed-pythia82-fcc100-ZZ-pt5-50k 
+processed-pythia82-lhc13-ZZ-pt1-50k 
+processed-pythia82-fcc100-gg-pt5-50k 
+processed-pythia82-lhc13-gg-pt1-50k 
+processed-pythia82-fcc100-tt-pt5-50k 
+processed-pythia82-lhc13-tt-pt1-50k 
+processed-pythia82-fcc100-qq-pt5-50k 
+processed-pythia82-lhc13-qq-pt1-50k)
 
 for ana in ${anasubs[*]} ; do
 for fileh in ${filehandles[*]} ; do

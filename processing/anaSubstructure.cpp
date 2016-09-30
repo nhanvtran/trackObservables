@@ -148,8 +148,7 @@ int main (int argc, char **argv) {
     smearDist = new TRandom3();
 
     char inName[192];
-    // sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
-    sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
+    sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
     LHEF::Reader reader(ifsbkg) ;
@@ -165,7 +164,7 @@ int main (int argc, char **argv) {
     declareBranches(t_tragam);
     declareBranches(t_allpar);
 
-    // evtCtr = 0;
+    evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
     std::vector < fastjet::PseudoJet > newparticles;
     // loop over events
@@ -198,7 +197,7 @@ int main (int argc, char **argv) {
         }
 
         // discretize neutral hadrons
-        bool discretize = 1;
+        bool discretize = 0;
         if (discretize) newparticles = discretizeEvent(particles);
         else newparticles = particles;
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
@@ -531,8 +530,8 @@ void smearJetPt(fastjet::PseudoJet &jet) {
     }
 
     
-    float resFudgeFactor = 5.;
-    bool nosmear = 1;
+    float resFudgeFactor = 100.;
+    bool nosmear = 0;
     Double_t smearedPt = smearDist->Gaus(1,energyResolution*resFudgeFactor);
     if (nosmear) smearedPt = 1.;
 
@@ -557,7 +556,6 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
-    // TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",10,etaMin,etaMax,10,phiMin,phiMax);                   
 
     std::vector<fastjet::PseudoJet> newparticles;
     for (unsigned int i = 0; i < particles.size(); ++i){
