@@ -105,10 +105,10 @@ int main (int argc, char **argv) {
     std::cout << "hello world!" << std::endl;
 
     std::string type = argv[1];   // type "gg" or "qq"
-    // int bin = atoi(argv[2]);
+    int tag = atoi(argv[2]);
     // int binp1 = bin+100;          // pt bin
-    // int min = atoi(argv[3]);      // events to run over
-    // int max = atoi(argv[4]);      // events to run over
+    int min = atoi(argv[3]);      // events to run over
+    int max = atoi(argv[4]);      // events to run over
     // std::string tag = argv[5];
     // float rVal = atof(argv[6]);
     
@@ -124,7 +124,7 @@ int main (int argc, char **argv) {
     LHEF::Reader reader(ifsbkg) ;
 
     char outName[192];
-    sprintf( outName, "processed-%s.root", type.c_str() );
+    sprintf( outName, "processed-%s-%i.root", type.c_str(), tag );
     // int rInt = (int) (rVal*10.);
     // sprintf( outName, "dataProcessedFinalSCOT/boost2013-%s-pt%04i-%04i%s_ak%02i.root", type.c_str(), bin, bin+100, tag.c_str(), rInt );
     TFile *f = TFile::Open(outName,"RECREATE");
@@ -143,8 +143,8 @@ int main (int argc, char **argv) {
         
         ++evtCtr;
         if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
-        if (evtCtr < 0) continue;
-        if (evtCtr > 50000) break;
+        if (evtCtr < min) continue;
+        if (evtCtr > max) break;
         
         // per event
         particles.clear();
