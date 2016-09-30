@@ -14,6 +14,28 @@ $ git clone https://github.com/nhanvtran/trackObservables.git
 $ mkdir /eos/uscms/store/user/${USER}/SubROC/training/weights
 ```
 
+For generation of ntuples, you need to install FastJet and FastJet/contrib. Place the installation in `processing` as follows:
+
+```
+For FastJet:
+$ cd processing/
+$ mkdir fastjet
+$ cd fastjet
+$ curl -O http://fastjet.fr/repo/fastjet-3.1.3.tar.gz 
+$ tar zxvf fastjet-3.1.3.tar.gz
+$ cd fastjet-3.1.3/
+$ ./configure --prefix=$PWD/../fastjet-install
+$ make && make check && make install
+
+For FastJet/contrib:
+$ cd ..
+$ http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
+$ tar zxvf fjcontrib-1.021.tar.gz
+$ cd fjcontrib-1.021
+$ ./configure --fastjet-config=../fastjet-install/bin/fastjet-config
+$ make && make check && make install
+```
+
 ###analysis
 
 Main body of the BDT training. Scripts to configure and launch TMVA.
@@ -65,41 +87,31 @@ Utilities to get formatted control plots from ntuples. Samples available at `/us
 
 ###processing
 
-Scripts to generate ntuples.
+To run the ntuplizer locally:
 
 ```
-#Install Fastjet and Fastjet contrib, go to any place you want
-mkdir fastjet
-cd fastjet
-curl -O http://fastjet.fr/repo/fastjet-3.1.3.tar.gz 
-tar zxvf fastjet-3.1.3.tar.gz
-cd fastjet-3.1.3/
-./configure --prefix=$PWD/../fastjet-install
-make 
-make check
-make install
-cd ..
-http://fastjet.hepforge.org/contrib/downloads/fjcontrib-1.021.tar.gz
-cd fjcontrib-1.021
-./configure --fastjet-config=/Users/ntran/Documents/Research/Ext/VHEPP/VHEPPStudies/fastjet/fastjet-install/bin/fastjet-config
-make 
-make check
-make install
+$ cd processing
+$ make
+$ ./anaSubstructure pythia82-fcc100-gg-pt5-50k \ # LHE filehandle to look at
+                    <location of LHE files> \ 
+                    0 \   # index of first event to process
+                    0 \   # index of last event to process 
+                    123   # some numeric tag to apply to the output name
 ```
 
-Then in `processing/Makefile` set `FASTJETLOCATION` to wherever you installed fastjet(/contrib).
+To run the ntuplizer via Condor (LPC):
+
 ```
-make
-./anaSubstructure pythia82-fcc100-gg-pt5-50k 0 0 10000
+$ cd processing
+$ make
+$ python SubmitCondor.py --indir <location of LHE files>                      \
+                         --outdir <where to put all outputs: .condor & .root> \
+                         --maxEvents <number of events to process>            \
+                         --evPerJob  <number of events for each condor job>   \
+                         --anaSubLoc <location of the anaSubstructure executable, by default in processing/> \
+                         --fastJetLoc <location of the fastjet-install/ directory, by default in processing/fastjet/>
 ```
-Inputs are name of the input file, file tag, first event, last event
 
-## Add code for condorizing the ntuplization...
+Note that you shouldn't have to change the last two options if you've followed the installation instructions above and are running these commands from `processing/`.
 
-
-
-
-
-
-
-
+You can play around with the condor templates, which are located in `condor/`.

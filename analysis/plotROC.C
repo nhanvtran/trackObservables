@@ -18,8 +18,10 @@ bool dotted = false;
 void plotROC() {
     leg->Draw();
     cROC->Print("roc_.png");
+    cROC->Print("roc_.pdf");
     cROC->SetLogy();
     cROC->Print("roc_log.png");
+    cROC->Print("roc_log.pdf");
     
     leg->Clear();
     cROC->SetLogy(0);
@@ -35,8 +37,10 @@ void plotROC() {
 void plotROC(TString filename) {
     leg->Draw();
     cROC->Print("roc_"+filename+".png");
+    cROC->Print("roc_"+filename+".pdf");
     cROC->SetLogy();
     cROC->Print("roc_log_"+filename+".png");
+    cROC->Print("roc_log_"+filename+".pdf");
     
     leg->Clear();
     cROC->SetLogy(0);
@@ -76,7 +80,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
         // plot first ROC
         TFile * file = new TFile(input);
-        TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
+        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
+        TH1F* MVA_BDTG_effBvsS = (TH1F *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetTitle("");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(0));
         MVA_BDTG_effBvsS->SetLineStyle(kSolid); 
@@ -90,13 +95,16 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         MVA_BDTG_effBvsS->GetYaxis()->SetTitleOffset(1.2);
         MVA_BDTG_effBvsS->GetXaxis()->SetLabelSize(0.03);
         MVA_BDTG_effBvsS->GetYaxis()->SetLabelSize(0.03);
+        MVA_BDTG_effBvsS->SetMaximum(1);
 
         MVA_BDTG_effBvsS->Draw();
 
         leg->AddEntry(MVA_BDTG_effBvsS, label,"l");
+        //file->Close();
     } else { 
         TFile * file = new TFile(input);
-        TH1D* MVA_BDTG_effBvsS = (TH1D *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
+        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
+        TH1F* MVA_BDTG_effBvsS = (TH1F *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(iColor)+0*sColor);
         if(dotted) { 
             MVA_BDTG_effBvsS->SetLineStyle(kDotted); 
@@ -106,8 +114,10 @@ void plotROC(TString input, TString label, Args... moreLabels) {
             MVA_BDTG_effBvsS->SetLineStyle(kSolid); 
         }
         MVA_BDTG_effBvsS->SetLineWidth(3);
+        MVA_BDTG_effBvsS->SetMaximum(1);
         MVA_BDTG_effBvsS->Draw("same");
         leg->AddEntry(MVA_BDTG_effBvsS, label, (dotted ? "lp" : "l"));
+        //file->Close();
     }
 
     iColor++;
@@ -119,6 +129,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
     // continue to call while there are extra args
     isFirst = false;
-    plotROC(moreLabels...);
+
+    justPlotNext:
+        plotROC(moreLabels...);
 
 }
