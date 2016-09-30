@@ -36,7 +36,6 @@ nFilesPerLHE=int(ceil(float(options.maxEvents)/float(options.evPerJob)))
 # prepare all configs
 for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
     if files[i].split('.')[-1] != "lhe" : continue
-    if "WW" not in files[i].split('.')[0] : continue
     current_name = options.outdir + '/' + files[i].split('.')[0] + "_%i"%j
     current_conf = open(current_name + '.condor','w')
     current_shel = open(current_name + '.sh','w')
@@ -88,7 +87,6 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
 # run jobs
 for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
     if files[i].split('.')[-1] != "lhe" : continue
-    if "WW" not in files[i].split('.')[0] : continue
     current_name = files[i].split('.')[0] + "_%i"%j
     os.chdir(options.outdir + '/')
     os.system('condor_submit ' + current_name + '.condor')

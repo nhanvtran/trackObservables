@@ -227,7 +227,7 @@ int main (int argc, char **argv) {
       mixer=new EventMixer(&cmdline);
     }
 
-    // evtCtr = 0;
+    evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
     std::vector < fastjet::PseudoJet > newparticles;
     // loop over events
@@ -762,7 +762,6 @@ void smearJetPt(fastjet::PseudoJet &jet) {
     float resFudgeFactor = 1.;
     bool nosmear = 0.;
     Double_t smearedPt = std::max(1e-10,smearDist->Gaus(1,energyResolution*resFudgeFactor));
-
     if (nosmear) smearedPt = 1.;
 
     jet.reset_momentum(jet.px() * smearedPt,
