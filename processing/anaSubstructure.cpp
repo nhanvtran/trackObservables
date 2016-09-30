@@ -173,7 +173,12 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 TRandom3 *smearDist;
 void smearJetPt(fastjet::PseudoJet &jet);
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
-std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal=false, Double_t numberOfPileup=0, Double_t maxChargedPt=1e10, Double_t maxChargedDr=1e10, Double_t trackingEfficiency=1.0);
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, 
+                                                bool discretizeEcal=false, 
+                                                Double_t numberOfPileup=0, 
+                                                Double_t maxChargedPt=1e10, 
+                                                Double_t maxChargedDr=1e10, 
+                                                Double_t trackingEfficiency=1.0);
 
 ////////////////////-----------------------------------------------
 
@@ -183,7 +188,8 @@ int main (int argc, char **argv) {
     std::string indir = argv[2];   // where to find input files 
     int min = atoi(argv[3]);      // events to run over
     int max = atoi(argv[4]);      // events to run over
-    std::string tag = argv[5];      // detector type
+    std::string tag   = argv[5];      // detector type
+    std::string jobid = argv[6];      // detector type
     
     RPARAM = 0.8;
     smearDist = new TRandom3();
@@ -196,7 +202,7 @@ int main (int argc, char **argv) {
     LHEF::Reader reader(ifsbkg) ;
 
     char outName[192];
-    sprintf(outName, "processed-%s-%s.root", type.c_str(), tag.c_str());
+    sprintf(outName, "processed-%s-%s.root", type.c_str(), jobid.c_str());
     TFile *f = TFile::Open(outName,"RECREATE");
     f->cd();
     TTree *t_tracks = new TTree("t_tracks","Tree with vectors");
