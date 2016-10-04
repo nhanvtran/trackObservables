@@ -13,6 +13,7 @@ parser.add_option('--evPerJob',   action='store', dest='evPerJob',   default=100
 parser.add_option('--maxEvents',  action='store', dest='maxEvents',  default=50000, help='Number of events in each input sample')
 parser.add_option('--anaSubLoc',  action='store', dest='anaSubLoc',  default="%s/anaSubstructure"%(pwd),            help='Location of anaSubstructure')
 parser.add_option('--fastJetLoc', action='store', dest='fastJetLoc', default="%s/fastjet/fastjet-install/"%(pwd),   help='Location of fastjet-install')
+parser.add_option('--cfg',        action='store', dest='cfg',        default="rhe",   help='Settings to pass to anaSubstructure')
 
 (options, args) = parser.parse_args()
 cmssw_base = os.environ['CMSSW_BASE']
@@ -57,6 +58,7 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'MINEV'       in line: line = line.replace('MINEV',       minEv)
         if 'MAXEV'       in line: line = line.replace('MAXEV',       maxEv)
         if 'TAG'         in line: line = line.replace('TAG',         "%i"%j)
+        if 'CFG'         in line: line = line.replace('CFG',         options.cfg)
 
         current_conf.write(line)
 
@@ -76,6 +78,7 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'MINEV'       in line: line = line.replace('MINEV',       "%i"%minEv)
         if 'MAXEV'       in line: line = line.replace('MAXEV',       "%i"%maxEv)
         if 'TAG'         in line: line = line.replace('TAG',         "%i"%j)
+        if 'CFG'         in line: line = line.replace('CFG',         options.cfg)
 
         current_shel.write(line)
 

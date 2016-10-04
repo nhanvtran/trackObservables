@@ -169,10 +169,11 @@ void declareBranches(TTree* t);
 void clearVectors();
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 
-// smearing functions
+// smearing globals and functions
+float resFudgeFactor = 1.;
+
 TRandom3 *smearDist;
 void smearJetPt(fastjet::PseudoJet &jet);
-std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, 
                                                 bool discretizeEcal=false, 
                                                 Double_t numberOfPileup=0, 
@@ -180,7 +181,10 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                                                 Double_t maxChargedDr=1e10, 
                                                 Double_t trackingEfficiency=1.0);
 
-////////////////////-----------------------------------------------
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// MAIN LOOP                                                                           //
+/////////////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char **argv) {
     
@@ -189,7 +193,7 @@ int main (int argc, char **argv) {
     int min = atoi(argv[3]);      // events to run over
     int max = atoi(argv[4]);      // events to run over
     std::string tag   = argv[5];      // detector type
-    std::string jobid = argv[6];      // detector type
+    std::string jobid = argv[6];      // condorization job id 
     
     RPARAM = 0.8;
     smearDist = new TRandom3();
@@ -286,16 +290,38 @@ int main (int argc, char **argv) {
         bool discretize = (tag.find("h")!=std::string::npos);
         static Double_t numberOfPileup=20.*(tag.find("q")!=std::string::npos);
         static bool discretizeEcal=(tag.find("e")!=std::string::npos);
-        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
-        static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
-        static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos)?0.9:1.0; // Tracking efficiency
-        if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,numberOfPileup, maxChargedPt, maxChargedDr, trackingEfficiency);
+
+        // Threshold above which track reconstruction in jet core is expected 
+        // to fail and charged hadrons are reconstructed as neutral hadrons. 
+        // Take value where CMS HCAL resolution gets better than tracking resolution
+        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 110 : 1e10;
+
+        // Distance to nearest neighbor below which track reconstruction in jet 
+        // core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
+        static Double_t maxChargedDr=(tag.find("s")!=std::string::npos) ? 0.01 : 1e10; 
+
+        // Tracking efficiency
+        static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos) ? 0.9 : 1.0; 
+
+        // Modify resolution fudge factor if desired
+        if(tag.find("x")!=std::string::npos) resFudgeFactor = 100; 
+
+        if (discretize) newparticles = discretizeEvent(particles,
+                                                       discretizeEcal,
+                                                       numberOfPileup, 
+                                                       maxChargedPt, 
+                                                       maxChargedDr, 
+                                                       trackingEfficiency);
         else newparticles = particles;
+
         // smear particle momenta
         if (tag.find("r")!=std::string::npos)
           for (unsigned int i = 0; i < newparticles.size(); ++i)
             smearJetPt(newparticles[i]);
-        // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
+
+        //std::cout << "number of particles = " << newparticles.size() 
+        //          << ", " << particles.size() 
+        //          << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
     }
     
@@ -309,6 +335,12 @@ int main (int argc, char **argv) {
     
     return 0 ;
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// MAIN LOOP                                                                           //
+/////////////////////////////////////////////////////////////////////////////////////////
 
 void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar){
     
@@ -356,7 +388,12 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
 
 }
 
-// ----------------------------------------------------------------------------------
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// declareBranches:                                                                    // 
+// Add branches into the analysis                                                      //
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void declareBranches( TTree* t ){
 
     t->Branch("njets"            , &njets            );
@@ -426,7 +463,11 @@ void declareBranches( TTree* t ){
 
 }
 
-// ----------------------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////////////
+// clearVectors:                                                                       // 
+// Cleanup after each tree fill()                                                      //
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void clearVectors(){
     j_pt.clear();
     j_ptfrac.clear();
@@ -490,7 +531,12 @@ void clearVectors(){
     j_multiplicity.clear();
 }
 
-// ----------------------------------------------------------------------------------
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// PushBackJetInformation:                                                             // 
+// Run variable computations on a given jet, fill branch arrays                        //
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 
     // for reclustering on the fly....
@@ -731,7 +777,13 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     }
 }
 
-// ----------------------------------------------------------------------------------
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// smearJetPt                                                                          // 
+// Apply resolution smearing to a given pseudojet                                      //
+//  - applied resolution depends on PDG ID of jet                                      //
+/////////////////////////////////////////////////////////////////////////////////////////
+
 void smearJetPt(fastjet::PseudoJet &jet) {
 
     Double_t energyResolution=0;
@@ -740,29 +792,49 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
-                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
-                //energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                // CMS TDR tuning
+                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); 
+                
+                // Delphes CMS tuning 
+                // github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                //energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); 
+
             } else if (it.first=="p")                               // ---------------------- photon resolution
-                energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2)); // CMS TDR
-                //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                // CMS TDR 
+                energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2));
+                
+                // CMS tuning 
+                // github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); 
+
             else if (it.first=="n")                               // -------------- neutral hadron resolution
-                //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
-                energyResolution=sqrt(pow(1.20/sqrt(6.*jet.e()),2)+pow(6.*0.05,2)); // CMS JET JINST + factor 6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
-                //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                // CMS JET JINST
+                //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); 
+                
+                // CMS JET JINST + factor 6 for the fact that 60% charged hadrons are 
+                //                 substracted before 10% neutral hadrons are reconstructed
+                energyResolution=sqrt(pow(1.20/sqrt(6.*jet.e()),2)+pow(6.*0.05,2)); 
+
+                // CMS tuning 
+                // github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); 
+
             else if (it.first=="l")                               // ---------------------- lepton resolution
+
                 energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
+
             else {                                                // ------------------------ everything else
+                
                 std::cout << "WARNING: Input jet has unlisted PDG ID!" << std:: endl;
                 energyResolution=0; // assume perfect resolution for everything else (?)
+
             }
+            
             // std::cout << it.first << " " << energyResolution << std::endl;
         }
     }
 
-    float resFudgeFactor = 1.;
-    bool nosmear = 0.;
     Double_t smearedPt = std::max(1e-10,smearDist->Gaus(1,energyResolution*resFudgeFactor));
-    if (nosmear) smearedPt = 1.;
 
     jet.reset_momentum(jet.px() * smearedPt,
                        jet.py() * smearedPt,
@@ -771,8 +843,18 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 
 }
 
-// ----------------------------------------------------------------------------------
-std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal, Double_t numberOfPileup, Double_t maxChargedPt, Double_t maxChargedDr, Double_t trackingEfficiency)
+/////////////////////////////////////////////////////////////////////////////////////////
+// discretizeEvent                                                                     // 
+// Apply calorimeter discretization to an event                                        //
+//  - option to toggle ecal discretization separately                                  //
+/////////////////////////////////////////////////////////////////////////////////////////
+
+std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, 
+                                                bool discretizeEcal, 
+                                                Double_t numberOfPileup, 
+                                                Double_t maxChargedPt, 
+                                                Double_t maxChargedDr, 
+                                                Double_t trackingEfficiency)
 {
 
     static Double_t etaMin = -3,
@@ -792,8 +874,9 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                  phiNBinsEcal = TMath::Floor((phiMax - phiMin)/phiResEcal); // CMS ECAL JINST
 
     TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);  
-                 
-    static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
+    
+    // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
+    static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; 
     for (int i = 0; i < etaNBins; ++i)
         for (int j = 0; j < phiNBins; ++j)
             hcalGrid->SetBinContent(i+1,j+1,pileupEnergyInCell);
@@ -830,7 +913,13 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     int ieta = ecalGrid->GetXaxis()->FindBin( cureta );
                     int iphi = ecalGrid->GetYaxis()->FindBin( curphi );
                     ecalGrid->SetBinContent( ieta,iphi, ecalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
-                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
+                    // std::cout << "n par id = " << particles[i].user_index() 
+                    //                            << "," << particles[i].e() 
+                    //                            << "," << ieta << "," 
+                    //                            << iphi << "," 
+                    //                            << cureta << "," 
+                    //                            << curphi 
+                    //                            << std::endl;
                 }
                 else if ((it.first=="n")||(!track)){
                     double curphi = particles[i].phi();
@@ -838,7 +927,13 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     int ieta = hcalGrid->GetXaxis()->FindBin( cureta );
                     int iphi = hcalGrid->GetYaxis()->FindBin( curphi );
                     hcalGrid->SetBinContent( ieta,iphi, hcalGrid->GetBinContent(ieta,iphi)+particles[i].e() );
-                    // std::cout << "n par id = " << particles[i].user_index() << "," << particles[i].e() << "," << ieta << "," << iphi << "," << cureta << "," << curphi << std::endl;
+                    // std::cout << "n par id = " << particles[i].user_index() 
+                    //                            << "," << particles[i].e() 
+                    //                            << "," << ieta << "," 
+                    //                            << iphi << "," 
+                    //                            << cureta << "," 
+                    //                            << curphi 
+                    //                            << std::endl;
                 }
                 else {                                                // ------------------------ everything else
                     std::cout << "WARNING: Input particle has unlisted PDG ID!" << std:: endl;
@@ -860,7 +955,10 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                 float cellpt = celle*2/(exp(celleta)+exp(-celleta));
                 fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
                 curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
-                // std::cout << "celle = " << celle << ", cellpt = " << cellpt << ", orig e = " << curbincontent << ", cell eta = " << celleta << std::endl;
+                // std::cout << "celle = "    << celle 
+                //           << ", cellpt = " << cellpt 
+                //           << ", orig e = " << curbincontent 
+                //           << ", cell eta = " << celleta << std::endl;
                 curcell.set_user_index( 130 );
                 newparticles.push_back(curcell);
                 hcalcellctr++;
@@ -884,7 +982,10 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                 float cellpt = celle*2/(exp(celleta)+exp(-celleta));
                 fastjet::PseudoJet curcell = fastjet::PseudoJet(0,0,0,0);
                 curcell.reset_PtYPhiM(cellpt,celleta,cellphi,0.0);
-                // std::cout << "celle = " << celle << ", cellpt = " << cellpt << ", orig e = " << curbincontent << ", cell eta = " << celleta << std::endl;
+                // std::cout << "celle = "    << celle 
+                //           << ", cellpt = " << cellpt 
+                //           << ", orig e = " << curbincontent 
+                //           << ", cell eta = " << celleta << std::endl;
                 curcell.set_user_index( 111 );
                 newparticles.push_back(curcell);
                 ecalcellctr++;
@@ -898,110 +999,4 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
     delete hcalGrid;
     delete ecalGrid;
     return newparticles;
-}
-
-std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, 
-                                              bool clusterJet) 
-{
-    static fastjet::JetDefinition   jetDef(fastjet::antikt_algorithm, RPARAM);    
-    static fastjet::GhostedAreaSpec fjActiveArea(ghostEtaMax,activeAreaRepeats,ghostArea);
-    static fastjet::AreaDefinition  fjAreaDefinition( fastjet::active_area, fjActiveArea );
-    static Double_t etaMin = -10,
-                    etaMax = 10,
-                    etaRes = 0.005,
-                    phiMin = 0, 
-                    phiMax = 2*TMath::Pi(),
-                    phiRes = 0.005; 
-    static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
-                 phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
-    
-    std::map<TString,std::pair<TH2D*,TH2D*>> resolutionHistos =
-    { { "n" , std::pair<TH2D*,TH2D*>(new TH2D("","",etaNBins,etaMin,etaMax,
-                                                    phiNBins,phiMin,phiMax),
-                                     new TH2D("","",etaNBins,etaMin,etaMax,
-                                                    phiNBins,phiMin,phiMax)) } };
-
-
-    std::vector< fastjet::PseudoJet > newPar;
-    
-    // collect constituents
-    for(int iConst=0; iConst < jet.constituents().size(); iConst++) {
-        fastjet::PseudoJet constituent = jet.constituents().at(iConst);
-
-        bool isDiscretizedType = false;
-        for(auto const& it: ids) {
-            if (resolutionHistos[it.first].first == 0) continue;
-            std::vector<int> tidSet = it.second;
-
-            if (std::find(tidSet.begin(), tidSet.end(), constituent.user_index()) != tidSet.end()) {
-               isDiscretizedType=true;
-               resolutionHistos[it.first].first->Fill(constituent.eta(),
-                                                      constituent.phi(),
-                                                      constituent.e());
-               resolutionHistos[it.first].second->Fill(constituent.eta(),
-                                                       constituent.phi(),
-                                                        pow(constituent.px(),2)
-                                                       +pow(constituent.py(),2)
-                                                       +pow(constituent.pz(),2));
-            }
-        }
-
-        if(!isDiscretizedType) {
-            newPar.push_back(constituent);
-        }
-    }
-
-    // build new constituents
-    for(auto& it: resolutionHistos) {
-        if (it.second.first == 0) continue;
-        TH2D* EHisto = it.second.first;
-        TH2D* pTHisto= it.second.second;
-
-        // loop over bins
-        for(int iEta=1; iEta <= etaNBins; iEta++) {
-        for(int iPhi=1; iPhi <= phiNBins; iPhi++) {
-            Int_t binNum    = EHisto->GetBin(iEta,iPhi);
-            Double_t binEta = EHisto->GetXaxis()->GetBinCenter(iEta);
-            Double_t binPhi = EHisto->GetYaxis()->GetBinCenter(iPhi);
-            Double_t binE   = EHisto->GetBinContent(binNum);
-            Double_t binp   = sqrt(pTHisto->GetBinContent(binNum));
-            if(binE == 0 && binp == 0) continue;
-
-            Double_t px = binp*TMath::Cos(binPhi),
-                     py = binp*TMath::Sin(binPhi),
-                     pz = binp*sinh(binEta);
-
-            // reconstruct PseudoJet using pE 4-vector
-            // (this is the only way in fastjet unless we assume m=0)
-            fastjet::PseudoJet newConst(px,py,pz,binE);
-            newConst.set_user_index(ids[it.first][0]); // just steal some id for now
-            newPar.push_back(newConst);
-        }}
-
-        delete EHisto;
-        delete pTHisto;
-    }
-    
-    for(auto& it: resolutionHistos) {
-        delete it.second.first;
-        delete it.second.second;
-    }
-
-    // build jet or just return constituents
-    if(clusterJet) {
-        if(newPar.size() > 0) {
-            fastjet::ClusterSequenceArea* thisClustering = new fastjet::ClusterSequenceArea(newPar, jetDef, fjAreaDefinition);
-            std::vector<fastjet::PseudoJet> out_jets = sorted_by_pt(thisClustering->inclusive_jets(0.01));
-            if(out_jets.size()>0) {
-              thisClustering->delete_self_when_unused();
-            } else delete thisClustering;
-            return out_jets;
-        } else {
-            fastjet::PseudoJet nulljet = fastjet::PseudoJet(0,0,0,0);
-            newPar.push_back(nulljet);
-            return newPar;
-        }
-    } else {
-        return newPar;
-    }
 }
