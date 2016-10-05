@@ -19,8 +19,8 @@ fi
 
 procdir=$PWD
 
-anasubs=(nores_nogran res_nogran res_granH res_granHE resx100_granHE)
-anacfgs=(z r rh rhe rhex)
+anasubs=(r0_h0_e0 r2_h5_e05 r2_h1_e05 r2_h1_e05_t)
+anacfgs=(z r2.0:h0.5:e0.05 r2.0:h0.1:e0.05 r2.0:h0.1:e0.05:t)
 
 filehandles=(
 processed-pythia82-fcc100-WW-pt5-50k 
@@ -102,7 +102,8 @@ for fileh in ${filehandles[*]} ; do
     echo " "
     echo "Working on ${fileh}-${ana}.root"
     echo " "
-    hadd ${fileh}-${ana}.root  `xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana} | grep root | grep ${fileh}`
+    hadd ${fileh}-${ana}.root  \
+        `xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana} | grep root | grep ${fileh}`
 done
 done
 
@@ -129,7 +130,10 @@ for fileh in ${filehandles[*]} ; do
     echo "Working on ${fileh}-${ana}.root"
     echo " "
     echo
-    nohup python quickPlotter.py -b --basedir ../processing --ana ${ana} -o ./plots/${ana}/ > ${ana}.txt &
+    nohup python quickPlotter.py -b \
+                                 --basedir ../processing \
+                                 --ana ${ana} \
+                                 -o ./plots/${ana}/ > ${ana}.txt &
 done
 done
 
@@ -150,7 +154,8 @@ if [[ "$2" == "" ]]; then
 fi
 
 for ana in ${anasubs[*]} ; do
-    scp plots/${ana}/* ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/
+    scp plots/${ana}/* \
+        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/
 done
 
 ;;

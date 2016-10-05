@@ -34,13 +34,31 @@
 #include "PU14.hh"
 #include "puppiContainer.hh"
 
+#include "LHEF.h"
+
 float deltaR (float eta1, float phi1, float eta2, float phi2) {
     float deta = eta1 - eta2;
     float dphi = std::abs(phi1-phi2); if (dphi>M_PI) dphi-=2*M_PI;  
     return sqrt(deta*deta + dphi*dphi);
 }
 
-#include "LHEF.h"
+double findOption(const TString& option, const TString& tag) {
+   TObjArray *toks = (TObjArray*) tag.Tokenize(":"); 
+   Double_t output=-1;
+
+   for(int i=0; i < toks->GetEntries(); i++) {
+        TString tok = ((TObjString*) toks->At(i))->String();
+
+        if(!tok.Contains(option)) continue;
+        output=tok.ReplaceAll(option,"").Atof();
+        break; 
+   }
+
+   std::cout<<"Setting option " << option << " to " << output << std::endl;
+   delete toks;
+   return output;
+}
+
 
 //#ifdef __MAKECINT__
 //#pragma link C++ class vector<float>+;
@@ -175,7 +193,8 @@ float resFudgeFactor = 1.;
 TRandom3 *smearDist;
 void smearJetPt(fastjet::PseudoJet &jet);
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, 
-                                                bool discretizeEcal=false, 
+                                                Double_t discretize=0, 
+                                                Double_t discretizeEcal=0, 
                                                 Double_t numberOfPileup=0, 
                                                 Double_t maxChargedPt=1e10, 
                                                 Double_t maxChargedDr=1e10, 
@@ -230,6 +249,10 @@ int main (int argc, char **argv) {
     if (tag.find("p")!=std::string::npos) {
       mixer=new EventMixer(&cmdline);
     }
+          
+    // Modify resolution fudge factor if desired
+    resFudgeFactor = findOption("r",tag);
+    if(resFudgeFactor<=0) resFudgeFactor = 1;
 
     evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
@@ -264,14 +287,17 @@ int main (int argc, char **argv) {
         }
 
         if (tag.find("p")!=std::string::npos) {
+
           if (!mixer->next_event()) { // when running out of PU events start from the beginning
             delete mixer;
             mixer=new EventMixer(&cmdline);
             mixer->next_event();
           }
+
           vector<PseudoJet> full_event = mixer->particles() ;
           vector<PseudoJet> hard_event, pileup_event;
           SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
+
           if (tag.find("i")!=std::string::npos) {
              puppiContainer curEvent(particles, pileup_event);
              particles = curEvent.puppiFetch(20);
@@ -286,15 +312,17 @@ int main (int argc, char **argv) {
           }
         }
 
-        // discretize neutral hadrons
-        bool discretize = (tag.find("h")!=std::string::npos);
+        // Discretize neutral hadrons
+        static Double_t discretize = findOption("h",tag); //(tag.find("h")!=std::string::npos);
         static Double_t numberOfPileup=20.*(tag.find("q")!=std::string::npos);
-        static bool discretizeEcal=(tag.find("e")!=std::string::npos);
+        static Double_t discretizeEcal = findOption("e",tag); //(tag.find("e")!=std::string::npos);
 
         // Threshold above which track reconstruction in jet core is expected 
         // to fail and charged hadrons are reconstructed as neutral hadrons. 
         // Take value where CMS HCAL resolution gets better than tracking resolution
-        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 110 : 1e10;
+        
+        //static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 110 : 1e10;
+        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 500 : 1e10;
 
         // Distance to nearest neighbor below which track reconstruction in jet 
         // core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
@@ -303,19 +331,18 @@ int main (int argc, char **argv) {
         // Tracking efficiency
         static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos) ? 0.9 : 1.0; 
 
-        // Modify resolution fudge factor if desired
-        if(tag.find("x")!=std::string::npos) resFudgeFactor = 100; 
-
-        if (discretize) newparticles = discretizeEvent(particles,
-                                                       discretizeEcal,
-                                                       numberOfPileup, 
-                                                       maxChargedPt, 
-                                                       maxChargedDr, 
-                                                       trackingEfficiency);
+        // Discretize if desired
+        if (discretize > 0) newparticles = discretizeEvent(particles,
+                                                           discretize,
+                                                           discretizeEcal,
+                                                           numberOfPileup, 
+                                                           maxChargedPt, 
+                                                           maxChargedDr, 
+                                                           trackingEfficiency);
         else newparticles = particles;
 
-        // smear particle momenta
-        if (tag.find("r")!=std::string::npos)
+        // Smear particle momenta
+        if (tag.find("r")!=std::string::npos) 
           for (unsigned int i = 0; i < newparticles.size(); ++i)
             smearJetPt(newparticles[i]);
 
@@ -850,26 +877,32 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 /////////////////////////////////////////////////////////////////////////////////////////
 
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, 
-                                                bool discretizeEcal, 
+                                                Double_t discretize,
+                                                Double_t discretizeEcal, 
                                                 Double_t numberOfPileup, 
                                                 Double_t maxChargedPt, 
                                                 Double_t maxChargedDr, 
                                                 Double_t trackingEfficiency)
 {
+    if(discretize<=0) return particles;
 
     static Double_t etaMin = -3,
                     etaMax = 3,
-                    etaRes = 0.087/2., // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    //etaRes = 0.087/2., // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    etaRes = discretize, 
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.087/2.; // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    //phiRes = 0.087/2.; // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    phiRes = discretize; 
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
     TH2D* hcalGrid = new TH2D("hcalGrid","hcalGrid",etaNBins,etaMin,etaMax,phiNBins,phiMin,phiMax);                   
 
-    static Double_t etaResEcal = 0.017, // CMS ECAL JINST
-                    phiResEcal = 0.017; // CMS ECAL JINST
+    //static Double_t etaResEcal = 0.017, // CMS ECAL JINST
+    //                phiResEcal = 0.017; // CMS ECAL JINST
+    static Double_t etaResEcal = (discretizeEcal > 0 ? discretizeEcal : 1),
+                    phiResEcal = (discretizeEcal > 0 ? discretizeEcal : 1);
     static Int_t etaNBinsEcal = TMath::Floor((etaMax - etaMin)/etaResEcal), // CMS ECAL JINST
                  phiNBinsEcal = TMath::Floor((phiMax - phiMin)/phiResEcal); // CMS ECAL JINST
 
@@ -902,7 +935,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                 }
                 if(track&&(maxChargedPt<10000)&&(particles[i].pt()<maxChargedPt))
                    track=false;
-                if((track)||(it.first=="l")||((!discretizeEcal) && (it.first=="p")))
+                if( track || it.first=="l" || (discretizeEcal <= 0 && it.first=="p"))
                 {                                   
                     newparticles.push_back( fastjet::PseudoJet(particles[i]) );
                     // std::cout << "c par id = " << particles[i].user_index() << std::endl;
