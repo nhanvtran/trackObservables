@@ -40,6 +40,33 @@ float deltaR (float eta1, float phi1, float eta2, float phi2) {
     return sqrt(deta*deta + dphi*dphi);
 }
 
+double findOption(const TString& option, const TString& tag) {
+   TObjArray *toks = (TObjArray*) tag.Tokenize(":"); 
+   Double_t output=-1;
+
+   for(int i=0; i < toks->GetEntries(); i++) {
+        TString tok = ((TObjString*) toks->At(i))->String();
+
+        if(!tok.Contains(option)) continue;
+        output=tok.ReplaceAll(option,"").Atof();
+        break; 
+   }
+
+   std::cout<<"Setting option " << option << " to " << output << std::endl;
+   delete toks;
+   return output;
+}
+
+std::string intToString(int i)
+{
+    std::stringstream ss;
+    std::string s;
+    ss << i;
+    s = ss.str();
+
+    return s;
+}
+
 #include "LHEF.h"
 
 //#ifdef __MAKECINT__
@@ -205,6 +232,8 @@ int main (int argc, char **argv) {
     declareBranches(t_tracks);
     declareBranches(t_tragam);
     declareBranches(t_allpar);
+
+    static Double_t numberOfPileup=findOption("p",tag);;
   
     std::vector<string> pufiles;
     pufiles.push_back("program");
@@ -213,7 +242,7 @@ int main (int argc, char **argv) {
     pufiles.push_back("-pileup");
     pufiles.push_back("lhc14-pythia8-4C-minbias-nev100.pu14.gz");
     pufiles.push_back("-npu");
-    pufiles.push_back("20");
+    pufiles.push_back(intToString(numberOfPileup));
     CmdLine cmdline(pufiles);
     EventMixer* mixer;
     
@@ -252,8 +281,7 @@ int main (int argc, char **argv) {
             }   
 
         }
-
-        if (tag.find("p")!=std::string::npos) {
+        if (numberOfPileup>0) {
           if (!mixer->next_event()) { // when running out of PU events start from the beginning
             delete mixer;
             mixer=new EventMixer(&cmdline);
@@ -264,7 +292,7 @@ int main (int argc, char **argv) {
           SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
           if (tag.find("i")!=std::string::npos) {
              puppiContainer curEvent(particles, pileup_event);
-             particles = curEvent.puppiFetch(20);
+             particles = curEvent.puppiFetch(numberOfPileup);
              for (unsigned int i = 0; i < particles.size(); ++i)
                particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
           } else {
@@ -278,12 +306,12 @@ int main (int argc, char **argv) {
 
         // discretize neutral hadrons
         bool discretize = (tag.find("h")!=std::string::npos);
-        static Double_t numberOfPileup=20.*(tag.find("q")!=std::string::npos);
+        static Double_t nPU=numberOfPileup*(tag.find("q")!=std::string::npos);
         static bool discretizeEcal=(tag.find("e")!=std::string::npos);
         static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
         static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
         static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos)?0.9:1.0; // Tracking efficiency
-        if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,numberOfPileup, maxChargedPt, maxChargedDr, trackingEfficiency);
+        if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,nPU, maxChargedPt, maxChargedDr, trackingEfficiency);
         else newparticles = particles;
         // smear particle momenta
         if (tag.find("r")!=std::string::npos)
@@ -734,18 +762,22 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
-                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
-                //energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
-            } else if (it.first=="p")                               // ---------------------- photon resolution
-                energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2)); // CMS TDR
+                //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
+                energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+            } else if (it.first=="p") {                              // ---------------------- photon resolution
+                //energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.15/jet.e(),2)+pow(0.005,2)); // CMS TDR
+                //energyResolution=sqrt(pow(0.027/sqrt(1.6*jet.e()),2)+pow(0.15/1.6/jet.e(),2)+pow(1.6*0.005,2)); // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
+                energyResolution=sqrt(pow(0.027/sqrt(jet.e()/1.6),2)+pow(0.15/jet.e()*1.6,2)+pow(0.005,2)); // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
                 //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
-            else if (it.first=="n")                               // -------------- neutral hadron resolution
+            } else if (it.first=="n") {                              // -------------- neutral hadron resolution
                 //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
-                energyResolution=sqrt(pow(1.20/sqrt(6.*jet.e()),2)+pow(6.*0.05,2)); // CMS JET JINST + factor 6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
+		//energyResolution=sqrt(pow(1.20/sqrt(7.*jet.e()),2)+pow(7.*0.05,2)); // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
+                energyResolution=sqrt(pow(1.20/sqrt(jet.e()/7.),2)+pow(0.05,2)); // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
                 //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
-            else if (it.first=="l")                               // ---------------------- lepton resolution
-                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
-            else {                                                // ------------------------ everything else
+            } else if (it.first=="l") {                              // ---------------------- lepton resolution
+                //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
+                energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+            } else {                                                // ------------------------ everything else
                 std::cout << "WARNING: Input jet has unlisted PDG ID!" << std:: endl;
                 energyResolution=0; // assume perfect resolution for everything else (?)
             }
@@ -772,10 +804,10 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     static Double_t etaMin = -3,
                     etaMax = 3,
-                    etaRes = 0.087/2., // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    etaRes = 0.087/sqrt(12), // CMS TDR, factor 3 since particle flow cluster algorithm reaches this precision
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    phiRes = 0.087/2.; // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    phiRes = 0.087/sqrt(12); // CMS TDR, factor 3 since particle flow cluster algorithm reaches this precision
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
 
@@ -812,7 +844,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     }
                   }
                 }
-                if(track&&(maxChargedPt<10000)&&(particles[i].pt()<maxChargedPt))
+                if(track&&(maxChargedPt<10000)&&(particles[i].pt()>maxChargedPt))
                    track=false;
                 if((track)||(it.first=="l")||((!discretizeEcal) && (it.first=="p")))
                 {                                   
