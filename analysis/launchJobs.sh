@@ -1,9 +1,13 @@
-eosdirname=trainings_07152016_all
-logdirname=trainings_07152016_all
+echo "*****************************************"
+echo "*                                       *"
+echo "* Track Observables Study: Trainings    *"
+echo "*                                       *"
+echo "*****************************************"
 
-sigList=(tt WW ZZ)
-bkgList=(tt WW ZZ)
-treeList=(t_tragam t_tracks t_allpar)
+# inputs: postfix sigs(csv) bkgs(csv) vars(csv)
+
+eosdirname=trainings_${1}
+logdirname=trainings_${1}
 
 # FULL LIST OF VARIABLES:
 # njets 
@@ -38,16 +42,21 @@ treeList=(t_tragam t_tracks t_allpar)
 # j_mass_sdm1
 # j_multiplicity
 
-varList=(j_mass_trim j_mass_mmdt j_mass_prun j_mass_sdb2 j_mass_sdm1 j_c2_b1 j_c2_b2 j_d2_b1 j_d2_b2 j_tau21_b1 j_tau21_b2 j_c1_b0 j_c1_b1 j_c1_b2 j_tau1_b1 j_tau1_b2 j_zlogz j_tau32_b1 j_tau32_b2) 
-
-
-# YOU SHOULD NOT HAVE TO CHANGE ANYTHING BELOW HERE
+################################################################################
+#                          Nothing below should change                         #
+################################################################################
 
 # setup
+indir=/uscms_data/d3/ecoleman/TrackObservablesStudy/samples/
+sigList=(${2//,/ })
+bkgList=(${3//,/ })
+varList=(${4//,/ })
+
 SIGS=""
 BKGS=""
 VARS=""
 varsToWeight=(j_mass_trim j_mass_mmdt j_mass_prun j_mass_sdb2 j_mass_sdm1)
+treeList=(t_tragam t_tracks t_allpar)
 
 # fetch signals
 for sig in ${sigList[*]}
@@ -90,29 +99,39 @@ do
     fi
 done
 
-echo "Launching trainings with the following settings:"
 echo ""
+echo "****************************************************"
+echo "* Launching trainings with the following settings: *"
+echo "****************************************************"
 echo " - SIGNALS: ${SIGS}"
 echo " - BACKGROUNDS: ${BKGS}"
 echo " - VARIABLES: ${VARS}"
 echo ""
 echo " - CONDOR OUTPUT DIRECTORY: ./${logdirname}" 
-echo " - EOS    OUTPUT DIRECTORY: /eos/uscms/store/user/ecoleman/SubROC/${eosdirname}"
+echo " - EOS    OUTPUT DIRECTORY: /eos/uscms/store/user/${USER}/SubROC/${eosdirname}"
 echo ""
-echo ""
+echo "****************************************************"
 
 # make important directories
-mkdir /eos/uscms/store/user/ecoleman/SubROC/${eosdirname}
-mkdir ${logdirname}
+eval `eos root://cmseos.fnal.gov mkdir /store/user/${USER}/SubROC/${eosdirname}`
+
+for file in $(xrdfs root://cmseos.fnal.gov ls /store/user/${USER}/SubROC/${eosdirname}) ;
+do
+    eval `xrdfs root://cmseos.fnal.gov rm ${file}`
+done
+
+mkdir ./${logdirname}/
+
 
 # launch jobs
 for tree in ${treeList[*]}
 do
-    python launchJobs.py -b --doTraining --userOverride ecoleman --tmpDir ${logdirname} \
+    python launchJobs.py -b --doTraining --userOverride ${USER} --tmpDir ${logdirname} \
         --eosDest SubROC/${eosdirname} --treeName ${tree} --sigs ${SIGS} --bkgs ${BKGS} \
-        --vars ${VARS}
+        --vars ${VARS} --sampleDir ${indir} --postfix 50k-$1
     
-    python launchJobs.py -b --doTraining --userOverride ecoleman --prefix processed-pythia82-fcc100 \
+    python launchJobs.py -b --doTraining --userOverride ${USER} --prefix processed-pythia82-fcc100 \
         --ptfix pt5 --tmpDir ${logdirname} --eosDest SubROC/${eosdirname} --treeName ${tree}        \
-        --sigs ${SIGS} --bkgs ${BKGS} --vars ${VARS}
+        --sigs ${SIGS} --bkgs ${BKGS} --vars ${VARS} --sampleDir ${indir} --postfix 50k-$1
+
 done

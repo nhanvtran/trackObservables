@@ -36,7 +36,7 @@ if __name__ == '__main__':
             if empty : continue
 
             print fname;
-            fout = open('_'.join(fname.replace('out_','').replace('pt1_','').split('_')[0:-1])+'.txt','w')
+            fout = open(options.output+'/'+'_'.join(fname.replace('out_','').replace('pt1_','').split('_')[0:-1])+'.txt','w')
             for line in fin:
                 infoLine=''.join((line+":").split(':')[1:-1])
                 if 'Separation' in infoLine :

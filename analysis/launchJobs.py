@@ -39,9 +39,6 @@ parser.add_option('--sampleDir',action="store",type="string",dest="sampleDir",de
 user = os.environ['USER'] if options.userOverride == "" else options.userOverride;
 
 sampleDir = options.sampleDir
-#/uscms_data/d2/ntran/physics/FCC/trackObservablesStudy/trackObservables/processing/testdat/';
-# weightDir = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/weights';
-# plotDir   = '/eos/uscms/store/user/ntran/SUSY/theory_JPM/training/plots';
 weightDir = './weights/';
 eosweightdir = '/store/user/%s/%s/weights/'%(user,options.eosDest);
 if options.makeROCs and options.interactive:
@@ -111,15 +108,12 @@ def condorize(command,tag):
     f2=open(f2n, 'w')
     f2.write("universe = vanilla \n");
     f2.write("Executable = %s \n" % (f1n) );
-    f2.write("Requirements = Memory >= 199 &&OpSys == \"LINUX\"&& (Arch != \"DUMMY\" )&& Disk > 1000000 \n");
     f2.write("Should_Transfer_Files = YES \n");
     f2.write("WhenToTransferOutput  = ON_EXIT_OR_EVICT \n");
     f2.write("Output = "+outtag+".stdout \n");
     f2.write("Error = "+outtag+".stderr \n");
     f2.write("Log = "+outtag+".log \n");
-    f2.write("Notification    = Error \n");
-    f2.write("x509userproxy = $ENV(X509_USER_PROXY) \n")
-
+    f2.write("Notification = Error \n");
     f2.write("Queue 1 \n");
     f2.close();
 
@@ -137,9 +131,6 @@ if __name__ == '__main__':
 
     signalsname = options.sigs.split(',');
     signals =[];
-    #masses = ['500','1000','1500','2000'];
-    masses = ['1']#,'1000','1500'];
-    # masses = ['500','1500'];
     for m in signalsname:
         signals.append( m+"-"+ptfix );
 
@@ -161,30 +152,12 @@ if __name__ == '__main__':
     else :
         if options.treeName=="t_allpar":
             # mass only
-            #observables=["j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-            #observablesQG=["j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-            # shapes only
             observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c2_b2[0]","j_c2_b1[0]"]
             observablesQG=["j_zlogz[0]","j_tau1_b1[0]","j_tau1_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_multiplicity"]
-            # original
-            #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-            #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-            # tau32
-           #observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
-           #observablesQG=["j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]","j_mass_mmdt[0]","j_mass_prun[0]","j_mass_sdb2[0]","j_mass_sdm1[0]","j_mass[0]"]
         else :
             # mass only
-            #observables=["j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-            #observablesQG=["j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-            # shapes only
             observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c2_b2[0]","j_c2_b1[0]"]
             observablesQG=["j_zlogz[0]","j_tau1_b1[0]","j_tau1_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_multiplicity"]
-            # original
-            #observables=["j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_d2_b1[0]","j_d2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-            #observablesQG=["j_zlogz[0]","j_tau21_b1[0]","j_tau21_b2[0]","j_c1_b0[0]","j_c1_b1[0]","j_c1_b2[0]","j_c2_b1[0]","j_c2_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-            # tau32
-            # observables=["j_tau32_b1[0]","j_tau32_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
-             #observablesQG=["j_zlogz[0]","j_tau23_b1[0]","j_tau23_b2[0]","j_mass_trim[0]*j_ptfrac[0]","j_mass_mmdt[0]*j_ptfrac[0]","j_mass_prun[0]*j_ptfrac[0]","j_mass_sdb2[0]*j_ptfrac[0]","j_mass_sdm1[0]*j_ptfrac[0]","j_mass[0]*j_ptfrac[0]"]
 
 
 
@@ -203,13 +176,9 @@ if __name__ == '__main__':
                 for iObs in range(len(Observables)):
                     if iObs != len(Observables)-1:
                         tmp = Observables[iObs]
-                        #tmp2= tmp.replace('[','')
-                        #tmp3 = tmp2.replace(']','')
                         obsList += tmp + ";";
                     else:
                         tmp = Observables[iObs]
-                        #tmp2= tmp.replace('[','')
-                        #tmp3 = tmp2.replace(']','')
                         obsList += tmp;
 
                 command = "python analysis.py -b ";
@@ -227,26 +196,21 @@ if __name__ == '__main__':
 
                 print command;
                 label = sig + "_" + bkg+ "_"+ options.treeName;
-                #tag = label.translate(None, ';,');
                 labelbase = sig + "_" + bkg+ "_"+ options.treeName;
                 tag = label.replace(',','_');
                 tagbase = labelbase.replace(',','_')
 
                 filestring = "%s/weights_bdtg_%s/TMVAClassification_MVA_bdtg_%s_BDTG.weights.xml" % (weightDir,tagbase,tag);
-                print("here")
                 if options.interactive:
                     print "doing, ", command
                     os.system(command);
-                    print("here")
                 else:
                     if not os.path.isfile(filestring) and options.cleaning:
                         jobctr+=1;
                         condorize(command,tag);
-                        print("here1")
                     if not options.cleaning:
                         jobctr+=1;
                         condorize(command,tag);
-                        print("here2")
                     time.sleep(0.1) # delays for 5 seconds
 
     ## make roc
@@ -277,15 +241,11 @@ if __name__ == '__main__':
 
                 print command;
                 label = sig + "_" + bkg + "_ROCs";
-                #tag = label.translate(None, ';,');
                 labelbase = sig + "_" + bkg;
                 tag = label.replace(',','_');
                 tagbase = labelbase.replace(',','_')
 
                 filestring = "%s/plots_bdtg_%s/RocSummary_%s.txt" % (plotDir,tagbase,tagbase);
-                #print filestring
-                # print tag;
-                # condorize(command,tag);
                 if options.interactive:
                     print "interactively: ", command, tagbase
                     os.system(command);

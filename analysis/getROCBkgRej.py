@@ -13,6 +13,8 @@ import time
 from optparse import OptionParser
 import ROOT
 
+ROOT.gROOT.SetBatch(True)
+
 parser = OptionParser()
 
 parser.add_option('--inputs',action="store",type="string",dest="inputs",default="./tmp/")
@@ -62,6 +64,7 @@ for fname in onlyfiles :
         continue
     bkgRej=1/MVAh.GetBinContent(halfBin)
     plotMatrix[treename][cat1.split('-')[1]][cat1[0]][cat2[0]]=bkgRej
+    #plotMatrix[treename][cat1.split('-')[1]][cat2[0]][cat1[0]]=bkgRej
     fout.write("%s \t %s \t %s \t %.3f\n"%(cat1, cat2, treename, bkgRej))
 
     fIn.Close()
@@ -125,8 +128,8 @@ pp.pprint(plotMatrix)
 #    pt5text.SetTextSize(0.025)
 #    pt5text.DrawLatexNDC(.51,.45,"p_{T} 5 TeV")
 #
-#    c.SaveAs("BackgroundRejection_%s.pdf"%(tree))
-#    c.SaveAs("BackgroundRejection_%s.png"%(tree))
+#    c.SaveAs("%s/BackgroundRejection_%s.pdf"%(options.output,tree))
+#    c.SaveAs("%s/BackgroundRejection_%s.png"%(options.output,tree))
 
 # Create plots tracks/allpar ///// tragam/allpar
 
@@ -184,10 +187,14 @@ for pt in [("pt1")] :
     pt5text.SetTextSize(0.025)
     pt5text.DrawLatexNDC(.45,.42,"all par. / tracks+#gamma")
 
-    c.SaveAs("BackgroundRejectionRatios_%s.pdf"%(pt))
-    c.SaveAs("BackgroundRejectionRatios_%s.png"%(pt))
+    c.SaveAs("%s/BackgroundRejectionRatios_%s.pdf"%(options.output,pt))
+    c.SaveAs("%s/BackgroundRejectionRatios_%s.png"%(options.output,pt))
 
-for tree,pt,proc1,proc2 in [(t,"pt1",pr1,pr2) for t in trees for pr1 in procs for pr2 in procs]:
+for tree,pt,proc1,proc2 in [(t,pt,pr1,pr2)
+        for t in trees
+        for pt in pts
+        for pr1 in procs
+        for pr2 in procs]:
     if proc1 == proc2 : continue;
-    plotMatrix[tree][pt][proc1][proc2]=plotMatrix["allpar"][pt][proc1][proc2]/plotMatrix[tree][pt][proc1][proc2]
     print "%s \t %s%s \t %s%s \t %.1f" %(tree,proc1,pt,proc2,pt,plotMatrix[tree][pt][proc1][proc2])
+    plotMatrix[tree][pt][proc1][proc2]=plotMatrix["allpar"][pt][proc1][proc2]/plotMatrix[tree][pt][proc1][proc2]

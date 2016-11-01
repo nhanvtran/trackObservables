@@ -1,8 +1,14 @@
 #include <TString.h>
 #include <TFile.h>
+#include <TLegend.h>
 #include <TCanvas.h>
+#include <TH1F.h>
+#include <TStyle.h>
+#include <TROOT.h>
+#include <cstdlib>
 
 // drawing utils
+TString outputDir="./";
 TLegend *leg  = new TLegend(0.15625,0.621654,0.4765625,0.803839,NULL,"brNDC");
 TCanvas *cROC = new TCanvas("cROC","cROC",700,700);
 bool isFirst = true;
@@ -17,11 +23,11 @@ bool dotted = false;
 // recursion base case: draw and save
 void plotROC() {
     leg->Draw();
-    cROC->Print("roc_.png");
-    cROC->Print("roc_.pdf");
+    cROC->Print(outputDir+"roc_.png");
+    cROC->Print(outputDir+"roc_.pdf");
     cROC->SetLogy();
-    cROC->Print("roc_log.png");
-    cROC->Print("roc_log.pdf");
+    cROC->Print(outputDir+"roc_log.png");
+    cROC->Print(outputDir+"roc_log.pdf");
     
     leg->Clear();
     cROC->SetLogy(0);
@@ -36,11 +42,11 @@ void plotROC() {
 
 void plotROC(TString filename) {
     leg->Draw();
-    cROC->Print("roc_"+filename+".png");
-    cROC->Print("roc_"+filename+".pdf");
+    cROC->Print(outputDir+"roc_"+filename+".png");
+    cROC->Print(outputDir+"roc_"+filename+".pdf");
     cROC->SetLogy();
-    cROC->Print("roc_log_"+filename+".png");
-    cROC->Print("roc_log_"+filename+".pdf");
+    cROC->Print(outputDir+"roc_log_"+filename+".png");
+    cROC->Print(outputDir+"roc_log_"+filename+".pdf");
     
     leg->Clear();
     cROC->SetLogy(0);
@@ -80,7 +86,9 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
         // plot first ROC
         TFile * file = new TFile(input);
-        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
+        if(!((bool) file->GetListOfKeys()->At(0))) {
+            goto justPlotNext;
+        }
         TH1F* MVA_BDTG_effBvsS = (TH1F *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetTitle("");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(0));
@@ -103,7 +111,9 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         //file->Close();
     } else { 
         TFile * file = new TFile(input);
-        if(!((bool) file->GetListOfKeys()->At(0))) goto justPlotNext;
+        if(!((bool) file->GetListOfKeys()->At(0))) {
+            goto justPlotNext;
+        }
         TH1F* MVA_BDTG_effBvsS = (TH1F *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(iColor)+0*sColor);
         if(dotted) { 
@@ -133,4 +143,15 @@ void plotROC(TString input, TString label, Args... moreLabels) {
     justPlotNext:
         plotROC(moreLabels...);
 
+}
+
+void plotROC(std::vector<TString> inputs) { 
+    if(inputs.size() == 0) plotROC();
+    else if(inputs.size() == 1) plotROC(inputs[0]);
+    else {
+        std::vector<TString> newinputs = inputs;
+        newinputs.erase(newinputs.begin());
+        newinputs.erase(newinputs.begin());
+        plotROC(inputs[0],inputs[1],newinputs);
+    }
 }
