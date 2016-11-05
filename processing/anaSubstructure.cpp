@@ -1,3 +1,4 @@
+#include "HepMC/IO_GenEvent.h"
 #include "LHEF.h"
 #include "TROOT.h"
 #include "TH1.h"
@@ -29,6 +30,7 @@
 #include "fastjet/contrib/SoftDrop.hh"
 #include "fastjet/contrib/DistanceMeasure.hh"
 
+#include "EnergyCorrelations.hh"
 #include "CmdLine.hh"
 #include "EventMixer.hh"
 #include "PU14.hh"
@@ -67,7 +69,6 @@ std::string intToString(int i)
     return s;
 }
 
-#include "LHEF.h"
 
 //#ifdef __MAKECINT__
 //#pragma link C++ class vector<float>+;
@@ -98,6 +99,7 @@ std::string intToString(int i)
 
 ////////////////////-----------------------------------------------
 // Global variables
+EnergyCorrelations* fECF;
 int evtCtr;
 float RPARAM;
 
@@ -130,6 +132,10 @@ std::vector<float> j_n2_b1;
 std::vector<float> j_n2_b2;
 std::vector<float> j_m2_b1;
 std::vector<float> j_m2_b2;
+std::vector<float> j_n3_b1;
+std::vector<float> j_n3_b2;
+std::vector<float> j_m3_b1;
+std::vector<float> j_m3_b2;
 
 std::vector<float> j_tau1_b1_mmdt;
 std::vector<float> j_tau2_b1_mmdt;
@@ -154,6 +160,10 @@ std::vector<float> j_n2_b1_mmdt;
 std::vector<float> j_n2_b2_mmdt;
 std::vector<float> j_m2_b1_mmdt;
 std::vector<float> j_m2_b2_mmdt;
+std::vector<float> j_n3_b1_mmdt;
+std::vector<float> j_n3_b2_mmdt;
+std::vector<float> j_m3_b1_mmdt;
+std::vector<float> j_m3_b2_mmdt;
 
 std::vector<float> j_qjetVol;
 std::vector<float> j_mass_trim;
@@ -216,12 +226,12 @@ int main (int argc, char **argv) {
     smearDist = new TRandom3();
 
     char inName[192];
-    sprintf( inName, "%s/%s.lhe",indir.c_str(),type.c_str() );
+    bool isLHE = type.find("lhe") != std::string::npos;
+    sprintf( inName, "%s/%s",indir.c_str(),type.c_str() );
     // sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
     std::cout << "fname = " << inName << std::endl;
     std::ifstream ifsbkg (inName) ;
-    LHEF::Reader reader(ifsbkg) ;
-
+    
     char outName[192];
     sprintf(outName, "processed-%s-%s.root", type.c_str(), tag.c_str());
     TFile *f = TFile::Open(outName,"RECREATE");
@@ -249,61 +259,88 @@ int main (int argc, char **argv) {
     if (tag.find("p")!=std::string::npos) {
       mixer=new EventMixer(&cmdline);
     }
-
+    fECF = new EnergyCorrelations();
     // evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
     std::vector < fastjet::PseudoJet > newparticles;
     // loop over events
-    while ( reader.readEvent () ) {
-        
-        ++evtCtr;
-        if (evtCtr < min) continue;
-        if (evtCtr > max) break;
-        
-        if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
-        
-        // per event
-        particles.clear();
-
-        // std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
-        for (unsigned int i = 0 ; i < reader.hepeup.IDUP.size(); ++i){
-
-            if (reader.hepeup.ISTUP.at(i) == 1){
-                float px = reader.hepeup.PUP.at(i).at(0);
-                float py = reader.hepeup.PUP.at(i).at(1);
-                float pz = reader.hepeup.PUP.at(i).at(2);
-                float e  = reader.hepeup.PUP.at(i).at(3);                                    
-                fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
-                int pdgid = reader.hepeup.IDUP.at(i);
-                curpar.set_user_index( pdgid );
-                curpar.set_user_info(new PU14(pdgid,-1,-1));
-                particles.push_back( curpar );
-            }   
-
-        }
-        if (numberOfPileup>0) {
-          if (!mixer->next_event()) { // when running out of PU events start from the beginning
-            delete mixer;
-            mixer=new EventMixer(&cmdline);
-            mixer->next_event();
-          }
-          vector<PseudoJet> full_event = mixer->particles() ;
-          vector<PseudoJet> hard_event, pileup_event;
-          SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
-          if (tag.find("i")!=std::string::npos) {
-             puppiContainer curEvent(particles, pileup_event);
-             particles = curEvent.puppiFetch(numberOfPileup);
-             for (unsigned int i = 0; i < particles.size(); ++i)
-               particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
-          } else {
-             for (unsigned int i = 0; i < pileup_event.size(); ++i) {
-               if(pileup_event[i].user_info<PU14>().charge()==0) continue;
-               pileup_event[i].set_user_index( pileup_event[i].user_info<PU14>().pdg_id() );
-               particles.push_back(pileup_event[i]);
-             }
-          }
-        }
-
+    bool nextEvent = true;
+    LHEF::Reader *reader;
+    if(isLHE) { 
+      reader = new LHEF::Reader(ifsbkg); 
+      nextEvent = reader->readEvent();
+    }
+    HepMC::GenEvent* evt;
+    HepMC::IO_GenEvent *hepmcreader;
+    if(!isLHE) {
+      hepmcreader = new HepMC::IO_GenEvent(inName,std::ios::in);
+      evt = hepmcreader->read_next_event();
+      nextEvent = (evt != 0);
+    }
+    while ( nextEvent ) {
+      
+      ++evtCtr;
+      if (evtCtr < min) continue;
+      if (evtCtr > max) break;
+      
+      if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
+      
+      // per event
+      particles.clear();
+      if(isLHE) { //Read an LHE file
+	// std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
+	for (unsigned int i = 0 ; i < reader->hepeup.IDUP.size(); ++i){
+	  
+	  if (reader->hepeup.ISTUP.at(i) == 1){
+	    float px = reader->hepeup.PUP.at(i).at(0);
+	    float py = reader->hepeup.PUP.at(i).at(1);
+	    float pz = reader->hepeup.PUP.at(i).at(2);
+	    float e  = reader->hepeup.PUP.at(i).at(3);                                    
+	    fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+	    int pdgid = reader->hepeup.IDUP.at(i);
+	    curpar.set_user_index( pdgid );
+	    curpar.set_user_info(new PU14(pdgid,-1,-1));
+	    particles.push_back( curpar );
+	  }   
+	  
+        } 
+      } else { //Read a HepMC file
+	for ( HepMC::GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p ){
+	  if(abs((*p)->status()) != 1) continue;
+	  //std::cout << (*p)->pdg_id() << " -- " << (*p)->momentum().perp() << " -- " << (*p)->status() << std::endl;
+	  float px = (*p)->momentum().px();
+	  float py = (*p)->momentum().py();
+	  float pz = (*p)->momentum().pz();
+	  float e  = (*p)->momentum().e();
+	  fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+	  int pdgid = (*p)->pdg_id();
+	  curpar.set_user_index( pdgid );
+	  particles.push_back( curpar );
+	}    
+      }
+      if (numberOfPileup>0) {
+	if (!mixer->next_event()) { // when running out of PU events start from the beginning
+	  delete mixer;
+	  mixer=new EventMixer(&cmdline);
+	  mixer->next_event();
+	}
+	vector<PseudoJet> full_event = mixer->particles() ;
+	vector<PseudoJet> hard_event, pileup_event;
+	SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
+	if (tag.find("i")!=std::string::npos) {
+	  puppiContainer curEvent(particles, pileup_event);
+	  particles = curEvent.puppiFetch(numberOfPileup);
+	  for (unsigned int i = 0; i < particles.size(); ++i)
+	    particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
+	} else {
+	  for (unsigned int i = 0; i < pileup_event.size(); ++i) {
+	    if(pileup_event[i].user_info<PU14>().charge()==0) continue;
+	    pileup_event[i].set_user_index( pileup_event[i].user_info<PU14>().pdg_id() );
+	    particles.push_back(pileup_event[i]);
+	  }
+	}
+      }
+      	
         // discretize neutral hadrons
         bool discretize = (tag.find("h")!=std::string::npos);
         static Double_t nPU=numberOfPileup*(tag.find("q")!=std::string::npos);
@@ -319,6 +356,14 @@ int main (int argc, char **argv) {
             smearJetPt(newparticles[i]);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
+	if(isLHE) { 
+	  nextEvent = reader->readEvent();
+	}
+	else { 
+	  delete evt;
+	  *hepmcreader >> evt;
+	  nextEvent = (evt != 0);
+	}
     }
     
     std::cout << "finish loop" << std::endl;
@@ -412,6 +457,10 @@ void declareBranches( TTree* t ){
     t->Branch("j_m2_b2"          , &j_m2_b2          );
     t->Branch("j_n2_b1"          , &j_n2_b1          );
     t->Branch("j_n2_b2"          , &j_n2_b2          );
+    t->Branch("j_m3_b1"          , &j_m3_b1          );
+    t->Branch("j_m3_b2"          , &j_m3_b2          );
+    t->Branch("j_n3_b1"          , &j_n3_b1          );
+    t->Branch("j_n3_b2"          , &j_n3_b2          );
 
     t->Branch("j_tau1_b1_mmdt"        , &j_tau1_b1_mmdt        );
     t->Branch("j_tau2_b1_mmdt"        , &j_tau2_b1_mmdt        );
@@ -438,6 +487,10 @@ void declareBranches( TTree* t ){
     t->Branch("j_m2_b2_mmdt"          , &j_m2_b2_mmdt          );
     t->Branch("j_n2_b1_mmdt"          , &j_n2_b1_mmdt          );
     t->Branch("j_n2_b2_mmdt"          , &j_n2_b2_mmdt          );
+    t->Branch("j_m3_b1_mmdt"          , &j_m3_b1_mmdt          );
+    t->Branch("j_m3_b2_mmdt"          , &j_m3_b2_mmdt          );
+    t->Branch("j_n3_b1_mmdt"          , &j_n3_b1_mmdt          );
+    t->Branch("j_n3_b2_mmdt"          , &j_n3_b2_mmdt          );
 
     t->Branch("j_mass_trim"      , &j_mass_trim      );
     t->Branch("j_mass_mmdt"      , &j_mass_mmdt      );
@@ -478,6 +531,10 @@ void clearVectors(){
     j_m2_b2.clear();
     j_n2_b1.clear();
     j_n2_b2.clear();
+    j_m3_b1.clear();
+    j_m3_b2.clear();
+    j_n3_b1.clear();
+    j_n3_b2.clear();
 
     j_tau1_b1_mmdt.clear();
     j_tau2_b1_mmdt.clear();
@@ -502,6 +559,10 @@ void clearVectors(){
     j_m2_b2_mmdt.clear();
     j_n2_b1_mmdt.clear();
     j_n2_b2_mmdt.clear();
+    j_m3_b1_mmdt.clear();
+    j_m3_b2_mmdt.clear();
+    j_n3_b1_mmdt.clear();
+    j_n3_b2_mmdt.clear();
 
     j_qjetVol.clear();
     j_mass_trim.clear();
@@ -599,15 +660,16 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C1_b2(1,2,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C2_b1(2,1,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorDoubleRatio ECF_C2_b2(2,2,fastjet::contrib::EnergyCorrelator::pt_R);
-
     fastjet::contrib::EnergyCorrelatorD2 ECF_D2_b1 (1.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorD2 ECF_D2_b2 (2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    /*
     fastjet::contrib::EnergyCorrelatorGeneralizedD2 ECF_D2_a1_b1 (1.0,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorGeneralizedD2 ECF_D2_a1_b2 (1.0,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorMseries ECF_M2_b1 (2,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorMseries ECF_M2_b2 (2,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorNseries ECF_N2_b1 (2,1.0,fastjet::contrib::EnergyCorrelator::pt_R);
     fastjet::contrib::EnergyCorrelatorNseries ECF_N2_b2 (2,2.0,fastjet::contrib::EnergyCorrelator::pt_R);
+    */
 
     j_pt.push_back( curjet.pt() );
     j_eta.push_back( curjet.eta() );
@@ -634,7 +696,9 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
             float conste = curjet.constituents().at(i).e()/curjet.e();
             zlogz += conste * log(conste);
         }
-
+	double beta=1;
+	std::vector<fastjet::PseudoJet> lConst = curjet.constituents();
+	fECF->calcECFN(beta,lConst,true);
         // energy correlator     
         j_zlogz.push_back( zlogz );   
         j_c1_b0.push_back( ECF_C1_b0(curjet) );
@@ -642,15 +706,32 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_c1_b2.push_back( ECF_C1_b2(curjet) );
         j_c2_b1.push_back( ECF_C2_b1(curjet) );
         j_c2_b2.push_back( ECF_C2_b2(curjet) );
-        j_d2_b1.push_back( ECF_D2_b1(curjet) );
+	j_d2_b1.push_back( ECF_D2_b1(curjet) );
         j_d2_b2.push_back( ECF_D2_b2(curjet) );
-        j_d2_a1_b1.push_back( ECF_D2_a1_b1(curjet) );
-        j_d2_a1_b2.push_back( ECF_D2_a1_b2(curjet) );
-        j_m2_b1.push_back( ECF_M2_b1(curjet) );
-        j_m2_b2.push_back( ECF_M2_b2(curjet) );
-        j_n2_b1.push_back( ECF_N2_b1(curjet) );
-        j_n2_b2.push_back( ECF_N2_b2(curjet) );
 
+	j_d2_a1_b1.push_back( fECF->D2()        );
+	j_m2_b1   .push_back( fECF->M2()        );
+        j_n2_b1   .push_back( fECF->N2()        );
+	j_m3_b1   .push_back( fECF->M3()        );
+        j_n3_b1   .push_back( fECF->N3()        );
+
+	beta=2;
+	lConst = curjet.constituents();
+	fECF->calcECFN(beta,lConst);
+	j_d2_a1_b2.push_back( fECF->D2()        );
+        j_m2_b2.push_back   ( fECF->M2()        );
+        j_n2_b2.push_back   ( fECF->M2()        );
+	j_m3_b2.push_back   ( fECF->M3()        );
+        j_n3_b2.push_back   ( fECF->N3()        );
+	/*
+	pAddJet->e2_b1      = float(fECF->manager->ecfns["2_2"]);
+	pAddJet->e3_b1      = float(fECF->manager->ecfns["3_3"]);
+	pAddJet->e3_v1_b1   = float(fECF->manager->ecfns["3_1"]);
+	pAddJet->e3_v2_b1   = float(fECF->manager->ecfns["3_2"]);
+	pAddJet->e4_v1_b1   = float(fECF->manager->ecfns["4_1"]);
+	pAddJet->e4_v2_b1   = float(fECF->manager->ecfns["4_2"]);
+	*/
+	
         // Groomed variables
         fastjet::PseudoJet mmdtjet=soft_drop_mmdt(curjet);
 
@@ -664,6 +745,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_tau21_b2_mmdt.push_back( nSub2KT_b2(mmdtjet) / nSub1KT_b2(mmdtjet) );
         j_tau32_b1_mmdt.push_back( nSub3KT_b1(mmdtjet) / nSub2KT_b1(mmdtjet) );
         j_tau32_b2_mmdt.push_back( nSub3KT_b2(mmdtjet) / nSub2KT_b2(mmdtjet) );
+
         j_c1_b0_mmdt.push_back( ECF_C1_b0(mmdtjet) );
         j_c1_b1_mmdt.push_back( ECF_C1_b1(mmdtjet) );
         j_c1_b2_mmdt.push_back( ECF_C1_b2(mmdtjet) );
@@ -671,13 +753,25 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_c2_b2_mmdt.push_back( ECF_C2_b2(mmdtjet) );
         j_d2_b1_mmdt.push_back( ECF_D2_b1(mmdtjet) );
         j_d2_b2_mmdt.push_back( ECF_D2_b2(mmdtjet) );
-        j_d2_a1_b1_mmdt.push_back( ECF_D2_a1_b1(mmdtjet) );
-        j_d2_a1_b2_mmdt.push_back( ECF_D2_a1_b2(mmdtjet) );
-        j_m2_b1_mmdt.push_back( ECF_M2_b1(mmdtjet) );
-        j_m2_b2_mmdt.push_back( ECF_M2_b2(mmdtjet) );
-        j_n2_b1_mmdt.push_back( ECF_N2_b1(mmdtjet) );
-        j_n2_b2_mmdt.push_back( ECF_N2_b2(mmdtjet) );
-        
+
+	beta=1;
+	lConst = mmdtjet.constituents();
+	fECF->calcECFN(beta,lConst,true);
+	j_d2_a1_b1_mmdt.push_back( fECF->D2()        );
+	j_m2_b1_mmdt   .push_back( fECF->M2()        );
+        j_n2_b1_mmdt   .push_back( fECF->N2()        );
+	j_m3_b1_mmdt   .push_back( fECF->M3()        );
+        j_n3_b1_mmdt   .push_back( fECF->N3()        );
+
+	beta=2;
+	lConst = mmdtjet.constituents();
+	fECF->calcECFN(beta,lConst);
+	j_d2_a1_b2_mmdt.push_back( fECF->D2()        );
+        j_m2_b2_mmdt.push_back   ( fECF->M2()        );
+        j_n2_b2_mmdt.push_back   ( fECF->M2()        );
+	j_m3_b2_mmdt.push_back   ( fECF->M3()        );
+        j_n3_b2_mmdt.push_back   ( fECF->N3()        );
+
         j_mass_trim.push_back( trimmer1( curjet ).m() );
         j_mass_prun.push_back( pruner1( curjet ).m() );    
         j_mass_mmdt.push_back( mmdtjet.m() );
@@ -716,6 +810,10 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_m2_b2.push_back( -99 );
         j_n2_b1.push_back( -99 );
         j_n2_b2.push_back( -99 );
+        j_m3_b1.push_back( -99 );
+        j_m3_b2.push_back( -99 );
+        j_n3_b1.push_back( -99 );
+        j_n3_b2.push_back( -99 );
 
         // Groomed variables
         j_tau1_b1_mmdt.push_back( -99 );        
@@ -741,6 +839,10 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         j_m2_b2_mmdt.push_back( -99 );
         j_n2_b1_mmdt.push_back( -99 );
         j_n2_b2_mmdt.push_back( -99 );
+        j_m3_b1_mmdt.push_back( -99 );
+        j_m3_b2_mmdt.push_back( -99 );
+        j_n3_b1_mmdt.push_back( -99 );
+        j_n3_b2_mmdt.push_back( -99 );
         
         j_mass_trim.push_back( -99 );
         j_mass_prun.push_back( -99 );
