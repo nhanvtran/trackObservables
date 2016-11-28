@@ -296,15 +296,15 @@ for training in ${trainings[*]} ; do
     echo " - Plotting for ${ana}_${training}"
     cd ${procdir}/../analysis/
 
-    # get separation statisics 
-    python getSeparationTXT.py \
-        --inputs ./trainings_${ana}_${training}/ \
-        --output ${procdir}/../output/${ana}/${training}
+    ## get separation statisics 
+    #python getSeparationTXT.py \
+    #    --inputs ./trainings_${ana}_${training}/ \
+    #    --output ${procdir}/../output/${ana}/${training}
 
-    # get ROC background rejection grids 
-    python getROCBkgRej.py \
-        --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
-        --output ${procdir}/../output/${ana}/${training}
+    ## get ROC background rejection grids 
+    #python getROCBkgRej.py \
+    #    --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
+    #    --output ${procdir}/../output/${ana}/${training}
 done
     # get ROC plots 
     root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\")"
@@ -323,22 +323,11 @@ if [[ "$2" == "" ]]; then
     exit 1;
 fi
 
-scp -r ${procdir}/../output/*/*/*.{png,pdf,txt} \
+rm output/output.tar.gz
+cd ${procdir}/../output/
+tar -czvf output.tar.gz * --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
+scp ${procdir}/../output/output.tar.gz \
     ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
-
-#for ana in ${anasubs[*]} ; do
-#for training in ${trainings[*]} ; do
-#    echo "${ana} - ${training}"
-#    scp ${procdir}/../output/${ana}/${training}/*.{txt}  \
-#        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/${training}/
-#done
-#    echo "${ana}"
-#    scp ${procdir}/../output/${ana}/*.{pdf,png,txt}  \
-#        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/
-#done
-#
-#echo "Sending summary projections to your www directory on LXPLUS"
-#scp ${procdir}/../output/Summary*.{pdf,png} ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
 
 ;;
 
@@ -361,9 +350,9 @@ lines=(
 sigs=(W,g W,q t,g)
 # a list of csv of variables for each set of plots
 varLists=(
-j_mass_mmdt
-j_mass_mmdt
-j_mass_mmdt
+j_mass_mmdt,j_d2_b2
+j_mass_mmdt,j_d2_b2
+j_mass_mmdt,j_tau32_b1
 )
 # name indicating kind of plot
 nameList=(

@@ -74,7 +74,7 @@ void getROCs(TString inputDir,TString outDir="./") {
            settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
         }
 
-        settings.push_back(sig+"_v_"+bkg+"_cmptrees_"+pt+"_"+trainingsNames.at(i));
+        settings.push_back(sig+"_v_"+bkg+"_cmptrees_"+pt+"_"+training);
 
         colorSettings.push_back(trees.size());
         settingsMap.push_back(settings);
