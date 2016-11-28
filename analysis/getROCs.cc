@@ -9,8 +9,11 @@ void getROCs(TString inputDir,TString outDir="./") {
     // analysis information 
     std::vector<TString> type = {"t", "W", "Z", "q", "g" };
     std::vector<TString> trees = { "allpar", "tracks", "tragam" };
+    std::vector<TString> treeNames = { "all par.", "tracks", "tra+#gamma" };
     std::vector<TString> pts = { "pt1", "pt5" };
+    std::vector<TString> ptNames = { "p_{T} 1 TeV", "p_{T} 5 TeV" };
     std::vector<TString> trainings = { "shapesonly", "massonly", "all" };
+    std::vector<TString> trainingsNames = { "shapes", "mass", "all var." };
     outputDir=outDir+"/";
 
     
@@ -38,7 +41,8 @@ void getROCs(TString inputDir,TString outDir="./") {
            settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                       +sig+sig+"-"+pt+"_"+bkg+bkg
                                       +"-"+pt+"_t_"+tree+".root");
-           settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
+           settings.push_back(sig+" vs "+bkg+" "+treeNames.at(i)+
+                                            ", "+trainingsNames.at(itrain));
         }
 
         settings.push_back(sig+"_v_"+bkg+"_cmptrainings_"+pt+"_"+tree);
@@ -70,7 +74,7 @@ void getROCs(TString inputDir,TString outDir="./") {
            settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
         }
 
-        settings.push_back(sig+"_v_"+bkg+"_cmptrees_"+pt+"_"+training);
+        settings.push_back(sig+"_v_"+bkg+"_cmptrees_"+pt+"_"+trainingsNames.at(i));
 
         colorSettings.push_back(trees.size());
         settingsMap.push_back(settings);
@@ -96,7 +100,8 @@ void getROCs(TString inputDir,TString outDir="./") {
                settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                           +sig+sig+"-"+pt+"_"+bkg+bkg
                                           +"-"+pt+"_t_"+tree+".root");
-               settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
+               settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)
+                                            +", "+trainingsNames.at(i));
             }
         }
 
@@ -126,7 +131,8 @@ void getROCs(TString inputDir,TString outDir="./") {
                settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                           +sig+sig+"-"+pt+"_"+bkg+bkg
                                           +"-"+pt+"_t_"+tree+".root");
-               settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
+               settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)
+                                                    +", "+trainingsNames.at(i));
             }
         }
 
@@ -156,7 +162,7 @@ void getROCs(TString inputDir,TString outDir="./") {
             settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                     +sig+sig+"-"+pt+"_"+bkg+bkg
                     +"-"+pt+"_t_"+tree+".root");
-            settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
+            settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)+", "+trainingsNames.at(i));
         }
 
         settings.push_back(sig+"_v_all_"+tree+"_"+training+"_"+pt);
@@ -174,6 +180,6 @@ void getROCs(TString inputDir,TString outDir="./") {
         iCMax = colorSettings.at(i); 
         //std::cout<<iCMax<<std::endl;
         plotROC(settingsMap.at(i));
-        break;
+        gROOT->CloseFiles();
     }
 }

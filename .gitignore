@@ -1,0 +1,9 @@
+output/*
+analysis/trainings_*
+plotting/plots/*
+processing/r*_*_*
+processing/fastjet
+processing/validation
+analysis/eosrootfiles
+*.pyc
+processing/anaSubstructure

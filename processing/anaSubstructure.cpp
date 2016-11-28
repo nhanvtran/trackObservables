@@ -933,7 +933,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
                     }
                   }
                 }
-                if(track&&(maxChargedPt<10000)&&(particles[i].pt()<maxChargedPt))
+                if(track && (maxChargedPt<10000) && (particles[i].pt()>maxChargedPt))
                    track=false;
                 if( track || it.first=="l" || (discretizeEcal <= 0 && it.first=="p"))
                 {                                   

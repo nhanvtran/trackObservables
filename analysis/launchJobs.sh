@@ -6,8 +6,8 @@ echo "*****************************************"
 
 # inputs: postfix sigs(csv) bkgs(csv) vars(csv)
 
-eosdirname=trainings_${1}
-logdirname=trainings_${1}
+eosdirname=trainings_${1}_$5
+logdirname=trainings_${1}_$5
 
 # FULL LIST OF VARIABLES:
 # njets 

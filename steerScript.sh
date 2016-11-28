@@ -223,27 +223,30 @@ for ana in ${anasubs[*]} ; do
 
     i=0
     for sig in ${aloSigList[*]}; do
-        # all trainings
-        cmd="sh launchJobs.sh ${ana}_all ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars},${aloVarList[$i]}"
-        eval "$cmd"
-        cmd="sh launchJobs.sh ${ana}_all ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars},${aloVarList[$i]}"
-        eval "$cmd"
         
         # shapesonly trainings
         if [[ "${trainings[@]}" =~ "shapesonly" ]] ; then
-            cmd="sh launchJobs.sh ${ana}_shapesonly ${aloSigList[$i]} ${aloBkgList[$i]} ${shapeVarList[$i]}"
-            eval "$cmd"
-            cmd="sh launchJobs.sh ${ana}_shapesonly ${aloBkgList[$i]} ${aloSigList[$i]} ${shapeVarList[$i]}"
-            eval "$cmd"
+            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${shapeVarList[$i]} shapesonly"
+            eval "$cmd" &
+            cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${shapeVarList[$i]} shapesonly"
+            eval "$cmd" &
         fi
 
         # massonly trainings
         if [[ "${trainings[@]}" =~ "massonly" ]] ; then
-            cmd="sh launchJobs.sh ${ana}_massonly ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars}"
-            eval "$cmd"
-            cmd="sh launchJobs.sh ${ana}_massonly ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars}"
-            eval "$cmd"
+            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars} massonly"
+            eval "$cmd" &
+            cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars} massonly"
+            eval "$cmd" &
         fi
+        
+        # all trainings
+        cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars},${aloVarList[$i]} all"
+        eval "$cmd"
+        cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars},${aloVarList[$i]} all"
+        eval "$cmd"
+
+        sleep 0.5
 
         let "i += 1"    
     done
@@ -259,24 +262,24 @@ echo ""
 for ana in ${anasubs[*]} ; do
 for training in ${trainings[*]} ; do
     echo "For ${ana}_${training}:"
-    mkdir -p ${procdir}/../output/${ana}/${training}/eosrootfiles
-    rm   -rf ${procdir}/../output/${ana}/${training}/eosrootfiles/*
+    mkdir -p ${procdir}/../output/${ana}/eosrootfiles/${training}
+    rm   -rf ${procdir}/../output/${ana}/eosrootfiles/${training}/*
         
     # move existing output files from EOS directory 
     echo " - Moving files..."
     for tfile in $(xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/SubROC/trainings_${ana}_${training}); do
-        eval `xrdcp ${tfile} ${procdir}/../output/${ana}/${training}/eosrootfiles/` 
+        eval `xrdcp ${tfile} ${procdir}/../output/${ana}/eosrootfiles/${training}` 
     done
     
     # untar files 
     echo " - Untarring files..."
-    cd ${procdir}/../output/${ana}/${training}/eosrootfiles
-    for tfile in $(ls -u ${procdir}/../output/${ana}/${training}/eosrootfiles/*.gz); do
+    cd ${procdir}/../output/${ana}/eosrootfiles/${training}/
+    for tfile in $(ls -u ${procdir}/../output/${ana}/eosrootfiles/${training}/*.gz); do
         tar -xvf ${tfile}
     done
 
-    rm     ${procdir}/../output/${ana}/${training}/eosrootfiles/*.gz
-    rm -rf ${procdir}/../output/${ana}/${training}/eosrootfiles/weights
+    rm     ${procdir}/../output/${ana}/eosrootfiles/${training}/*.gz
+    rm -rf ${procdir}/../output/${ana}/eosrootfiles/${training}/weights
 done
 done
 
@@ -289,19 +292,22 @@ echo ""
 
 for ana in ${anasubs[*]} ; do
 for training in ${trainings[*]} ; do
-    echo " - Plotting for ${ana}"
+    mkdir -p ${procdir}/../output/${ana}/${training}
+    echo " - Plotting for ${ana}_${training}"
     cd ${procdir}/../analysis/
 
     # get separation statisics 
-    python getSeparationTXT.py --inputs ./trainings_${ana}_${training}/ --output ${procdir}/../output/${ana}/${training}
-
-    # get ROC plots 
-    root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/${training}/eosrootfiles/\",\"${procdir}/../output/${ana}/${training}\")"
+    python getSeparationTXT.py \
+        --inputs ./trainings_${ana}_${training}/ \
+        --output ${procdir}/../output/${ana}/${training}
 
     # get ROC background rejection grids 
-    python getROCBkgRej.py --inputs ${procdir}/../output/${ana}/${training}/eosrootfiles/ --output ${procdir}/../output/${ana}/${training}
-    break
+    python getROCBkgRej.py \
+        --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
+        --output ${procdir}/../output/${ana}/${training}
 done
+    # get ROC plots 
+    root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\")"
 done
 
 ;;
@@ -317,12 +323,77 @@ if [[ "$2" == "" ]]; then
     exit 1;
 fi
 
-for ana in ${anasubs[*]} ; do
-for training in ${trainings[*]} ; do
-    scp ${procdir}/../output/${ana}/${training}/*.{pdf,png,txt}  \
-        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/${training}/
-done
-done
+scp -r ${procdir}/../output/*/*/*.{png,pdf,txt} \
+    ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
+
+#for ana in ${anasubs[*]} ; do
+#for training in ${trainings[*]} ; do
+#    echo "${ana} - ${training}"
+#    scp ${procdir}/../output/${ana}/${training}/*.{txt}  \
+#        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/${training}/
+#done
+#    echo "${ana}"
+#    scp ${procdir}/../output/${ana}/*.{pdf,png,txt}  \
+#        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/
+#done
+#
+#echo "Sending summary projections to your www directory on LXPLUS"
+#scp ${procdir}/../output/Summary*.{pdf,png} ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
 
 ;;
+
+SUMMARY )
+############################ BDT_WWW ################################
+echo "Making summary projections"
+
+# hardcoded settings: anaSubs to use
+aloAna="r05_h05_e005,r05_h01_e005,r05_h01_e005_t"
+
+# kinds of plots:
+# 1) a plot for every (tree,pt); draw (sig,ana)
+# 2) a plot for every (pt,ana) ; draw (sig,tree)
+# 3) a plot for every (pt,ana) ; draw (sig,tree)
+lines=(
+**,**,*,*
+*,**,*,**
+*,**,*,**)
+# a list of csv of signals to use for each plot
+sigs=(W,g W,q t,g)
+# a list of csv of variables for each set of plots
+varLists=(
+j_mass_mmdt
+j_mass_mmdt
+j_mass_mmdt
+)
+# name indicating kind of plot
+nameList=(
+Wvg
+Wvq
+gvt
+)
+
+cd ${procdir}/../plotting/
+
+i=0
+cmd="echo 'plotting...'"
+for sig  in ${sigs[*]} ; do
+
+    cmd="${cmd} && python plotSampleSummary.py"
+    cmd="${cmd} --basedir /uscms_data/d3/ecoleman/TrackObservablesStudy/samples/"
+    cmd="${cmd} --logPlots"
+    cmd="${cmd} --sigs ${sig}"
+    cmd="${cmd} --vars ${varLists[i]}"
+    cmd="${cmd} --ana ${aloAna}"
+    cmd="${cmd} --lines ${lines[$i]}"
+    cmd="${cmd} -n ${nameList[$i]}"
+    cmd="${cmd} -o ${procdir}/../output/ " #> ${fileh}-${ana}.out"
+    
+    let "i+=1"
+
+done
+    
+nohup sh -c "eval ${cmd}" &
+
+;;
+
 esac
