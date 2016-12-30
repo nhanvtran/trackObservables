@@ -1,11 +1,11 @@
 # ----------------------------------------
 # inputs 
 
-FASTJETLOCATION=/afs/cern.ch/user/p/pharris/pharris/public/bacon/prod/CMSSW_8_0_20/src/Study/fastjet/fastjet-install
+FASTJETLOCATION=/uscms_data/d2/ntran/physics/ttbarMela/fastjet/fastjet-install
 FASTJETINC :=`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 FASTJETLIB :=`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 
-HEPMCLOCATION=/afs/cern.ch/user/p/pharris/pharris/public/bacon/prod/CMSSW_8_0_20/src/Study/HepMC/build/install/
+HEPMCLOCATION=/cvmfs/cms.cern.ch/slc6_amd64_gcc493/external/hepmc/2.06.07
 HEPMCINC :=-I$(HEPMCLOCATION)/include
 HEPMCLIB :=-L$(HEPMCLOCATION)/lib  -lHepMC
 
@@ -17,7 +17,7 @@ all: anaSubstructure
 
 anaSubstructure: anaSubstructure.cpp
 #	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) -lRecursiveTools -lEnergyCorrelator anaSubstructure.cpp 
-	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) $(HEPMCINC) $(HEPMCLIB) anaSubstructure.cpp -lEnergyCorrelator -lRecursiveTools -lNsubjettiness -lz puppiContainer.cc PU14.cc EventMixer.cc CmdLine.cc ParticleIDMethods.cc ParticleName.cc EventSource.cc zfstream.cc Version.cc EnergyCorrelations.cc
+	c++ -o anaSubstructure $(ROOTINC) $(FASTJETINC) $(FASTJETLIB) $(HEPMCINC) anaSubstructure.cpp $(HEPMCLIB) -lEnergyCorrelator -lRecursiveTools -lNsubjettiness -lz puppiContainer.cc PU14.cc EventMixer.cc CmdLine.cc ParticleIDMethods.cc ParticleName.cc EventSource.cc zfstream.cc Version.cc EnergyCorrelations.cc
 
 clean:
 	rm anaSubstructure
