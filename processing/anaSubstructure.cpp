@@ -280,6 +280,49 @@ int main (int argc, char **argv) {
         nextEvent = (evt != 0);
     }
 
+    TFile *fin;
+    TTree *tin;
+    const Int_t kMaxEvent = 1;
+    const Int_t kMaxGenParticle = 9994;
+    Int_t           Event_;
+    UInt_t          Event_fUniqueID[kMaxEvent];   //[Event_]
+    UInt_t          Event_fBits[kMaxEvent];   //[Event_]
+    Long64_t        Event_Number[kMaxEvent];   //[Event_]
+    Int_t           Event_size;    
+    Int_t           GenParticle_;
+    UInt_t          GenParticle_fUniqueID[kMaxGenParticle];   //[GenParticle_]
+    UInt_t          GenParticle_fBits[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_PID[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_Status[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_E[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Px[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Py[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Pz[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_PT[kMaxGenParticle];   //[GenParticle_]
+
+    if(isROOT){
+        fin = new TFile(inName,"READ");     // Open root input file from madgraph+pythia
+        tin = (TTree*)fin->Get("STDHEP");    // Get tree from root file
+        tin->SetMakeClass(1); // Necessary here !!!
+        tin->SetBranchAddress("Event",                &Event_);
+        tin->SetBranchAddress("Event.fUniqueID",       Event_fUniqueID);
+        tin->SetBranchAddress("Event.fBits",           Event_fBits);
+        tin->SetBranchAddress("Event.Number",          Event_Number);
+        tin->SetBranchAddress("Event_size",           &Event_size);
+        tin->SetBranchAddress("GenParticle",          &GenParticle_);
+        tin->SetBranchAddress("GenParticle.fUniqueID", GenParticle_fUniqueID);
+        tin->SetBranchAddress("GenParticle.fBits",     GenParticle_fBits);
+        tin->SetBranchAddress("GenParticle.PID",       GenParticle_PID);
+        tin->SetBranchAddress("GenParticle.Status",    GenParticle_Status);
+        tin->SetBranchAddress("GenParticle.E",         GenParticle_E);
+        tin->SetBranchAddress("GenParticle.Px",        GenParticle_Px);
+        tin->SetBranchAddress("GenParticle.Py",        GenParticle_Py);
+        tin->SetBranchAddress("GenParticle.Pz",        GenParticle_Pz);        
+    }
+    const Long64_t nentries = tin->GetEntriesFast();
+    if (isROOT) nextEvent = true;
+    std::cout << "Number of entries = " << nentries << ", " << isROOT << ", " << nextEvent << std::endl;
+
     ////////////////////////////////////////////////////////////////////////////////////////
     // start event loop    
     while ( nextEvent ) {
@@ -309,6 +352,22 @@ int main (int argc, char **argv) {
                 }   
             } 
         } 
+        else if (isROOT){
+            tin->GetEntry(evtCtr);
+            std::cout << "Evt ctr = " << evtCtr << ", particles " << GenParticle_ << std::endl;
+            for (int ipar = 0; ipar < GenParticle_; ipar++){
+                if (GenParticle_Status[ipar] != 1) continue;
+                float px = GenParticle_Px[ipar];
+                float py = GenParticle_Py[ipar];
+                float pz = GenParticle_Pz[ipar];
+                float e  = GenParticle_E[ipar];    
+                fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+                int pdgid = GenParticle_PID[ipar];
+                curpar.set_user_index( pdgid );
+                curpar.set_user_info(new PU14(pdgid,-1,-1));
+                particles.push_back( curpar );
+            }
+        }
         else { //Read a HepMC file
             for ( HepMC::GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p ){
                 if(abs((*p)->status()) != 1) continue;
@@ -370,6 +429,9 @@ int main (int argc, char **argv) {
         // go to next event?
         if(isLHE) { 
            nextEvent = reader->readEvent();
+        }
+        else if (isROOT){
+           if (evtCtr > nentries) nextEvent = false;
         }
         else { 
            delete evt;
