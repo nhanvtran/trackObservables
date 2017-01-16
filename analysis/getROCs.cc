@@ -9,15 +9,16 @@ void getROCs(TString inputDir,TString outDir="./") {
     // analysis information 
     std::vector<TString> type = {"t", "W", "Z", "q", "g" };
     std::vector<TString> trees = { "allpar", "tracks", "tragam" };
-    std::vector<TString> treeNames = { "all par.", "tracks", "tra+#gamma" };
+    std::vector<TString> treeNames = { "All particles", "Tracks only", "Tracks+#gamma" };
     std::vector<TString> pts = { "pt1", "pt5" };
     std::vector<TString> ptNames = { "p_{T} 1 TeV", "p_{T} 5 TeV" };
     std::vector<TString> trainings = { "shapesonly", "massonly", "all" };
-    std::vector<TString> trainingsNames = { "shapes", "mass", "all var." };
+    std::vector<TString> trainingsNames = { "Shapes only", "Mass only", "All variables" };
     outputDir=outDir+"/";
 
     
     // setup vectors of settings
+    std::vector<TString> extraTexts;
     std::vector<int> colorSettings;
     std::vector<std::vector<TString>> settingsMap;
 
@@ -41,11 +42,14 @@ void getROCs(TString inputDir,TString outDir="./") {
            settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                       +sig+sig+"-"+pt+"_"+bkg+bkg
                                       +"-"+pt+"_t_"+tree+".root");
-           settings.push_back(sig+" vs "+bkg+" "+treeNames.at(i)+
-                                            ", "+trainingsNames.at(itrain));
+           settings.push_back(trainingsNames.at(itrain));
         }
 
         settings.push_back(sig+"_v_"+bkg+"_cmptrainings_"+pt+"_"+tree);
+
+        TString extra = "#scale[0.8]{#splitline{"+treeNames.at(i)+"}{"+ptNames.at(l)+"}}";
+        extra = "#splitline{"+sig+" vs. "+bkg+"}{"+extra+"}";
+        extraTexts.push_back(extra);
 
         colorSettings.push_back(trainings.size());
         settingsMap.push_back(settings);
@@ -71,10 +75,14 @@ void getROCs(TString inputDir,TString outDir="./") {
            settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                       +sig+sig+"-"+pt+"_"+bkg+bkg
                                       +"-"+pt+"_t_"+tree+".root");
-           settings.push_back(sig+" vs "+bkg+" "+tree+", "+training);
+           settings.push_back(treeNames.at(itree));
         }
 
         settings.push_back(sig+"_v_"+bkg+"_cmptrees_"+pt+"_"+training);
+
+        TString extra = "#scale[0.8]{#splitline{"+trainingsNames.at(i)+"}{"+ptNames.at(l)+"}}";
+        extra = "#splitline{"+sig+" vs. "+bkg+"}{"+extra+"}";
+        extraTexts.push_back(extra);
 
         colorSettings.push_back(trees.size());
         settingsMap.push_back(settings);
@@ -100,12 +108,14 @@ void getROCs(TString inputDir,TString outDir="./") {
                settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                           +sig+sig+"-"+pt+"_"+bkg+bkg
                                           +"-"+pt+"_t_"+tree+".root");
-               settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)
-                                            +", "+trainingsNames.at(i));
+               settings.push_back(treeNames.at(itree)+", "+ptNames.at(l));
             }
         }
 
         settings.push_back(sig+"_v_"+bkg+"_cmptrees_ptall_"+training);
+
+        TString extra = "#splitline{"+sig+" vs. "+bkg+"}{#scale[0.8]{"+trainingsNames.at(i)+"}}";
+        extraTexts.push_back(extra);
 
         colorSettings.push_back(trees.size());
         settingsMap.push_back(settings);
@@ -131,12 +141,14 @@ void getROCs(TString inputDir,TString outDir="./") {
                settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                           +sig+sig+"-"+pt+"_"+bkg+bkg
                                           +"-"+pt+"_t_"+tree+".root");
-               settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)
-                                                    +", "+trainingsNames.at(i));
+               settings.push_back(sig+" vs "+bkg+", "+ptNames.at(l));
             }
         }
 
         settings.push_back(sig+"_v_all_"+tree+"_"+training+"_ptall");
+
+        TString extra = "#splitline{"+treeNames.at(itree)+"}{#scale[0.8]{"+trainingsNames.at(i)+"}}";
+        extraTexts.push_back(extra);
 
         colorSettings.push_back(type.size()-1);
         settingsMap.push_back(settings);
@@ -162,12 +174,49 @@ void getROCs(TString inputDir,TString outDir="./") {
             settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                     +sig+sig+"-"+pt+"_"+bkg+bkg
                     +"-"+pt+"_t_"+tree+".root");
-            settings.push_back(sig+" vs "+bkg+" "+treeNames.at(itree)+", "+trainingsNames.at(i));
+            settings.push_back(sig+" vs "+bkg);
         }
 
         settings.push_back(sig+"_v_all_"+tree+"_"+training+"_"+pt);
 
+        TString extra = "#scale[0.8]{#splitline{"+trainingsNames.at(i)+"}{"+ptNames.at(l)+"}}";
+        extra = "#splitline{"+treeNames.at(itree)+"}{"+extra+"}";
+        extraTexts.push_back(extra);
+
         colorSettings.push_back(type.size()-1);
+        settingsMap.push_back(settings);
+    }}}}
+
+
+    // all trainings for fixed tree, sig/bkg, pt
+    for(size_t j=0; j<type.size();  j++) {
+    for(size_t itree=0; itree < trees.size(); itree++) {
+    for(size_t l=0; l<pts.size();   l++) {
+    for(size_t k=0; k<type.size();  k++) {
+        if(j==k) continue;
+        TString tree = trees.at(itree);
+        TString sig = type.at(j);
+        TString bkg = type.at(k);
+        TString pt  = pts.at(l);
+
+        std::vector<TString> settings={};
+
+        for(size_t i=0; i<trainings.size(); i++) {
+            TString training=trainings.at(i);
+
+            settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
+                    +sig+sig+"-"+pt+"_"+bkg+bkg
+                    +"-"+pt+"_t_"+tree+".root");
+            settings.push_back(trainingsNames.at(i));
+        }
+
+        settings.push_back(sig+"_v_"+bkg+"_"+tree+"_"+pt);
+
+        TString extra = "#scale[0.8]{#splitline{"+treeNames.at(itree)+"}{"+ptNames.at(l)+"}}";
+        extra = "#splitline{"+sig+" vs. "+bkg+"}{"+extra+"}";
+        extraTexts.push_back(extra);
+
+        colorSettings.push_back(trainings.size()-1);
         settingsMap.push_back(settings);
     }}}}
 
@@ -178,6 +227,7 @@ void getROCs(TString inputDir,TString outDir="./") {
         //    std::cout<<settingsMap.at(i).at(j)<<std::endl;
         //}
         iCMax = colorSettings.at(i); 
+        extraText=extraTexts.at(i);
         //std::cout<<iCMax<<std::endl;
         plotROC(settingsMap.at(i));
         gROOT->CloseFiles();

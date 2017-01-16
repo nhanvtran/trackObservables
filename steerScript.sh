@@ -297,18 +297,20 @@ for training in ${trainings[*]} ; do
     cd ${procdir}/../analysis/
 
     ## get separation statisics 
-    #python getSeparationTXT.py \
-    #    --inputs ./trainings_${ana}_${training}/ \
-    #    --output ${procdir}/../output/${ana}/${training}
+    python getSeparationTXT.py \
+        --inputs ./trainings_${ana}_${training}/ \
+        --output ${procdir}/../output/${ana}/${training}
 
     ## get ROC background rejection grids 
-    #python getROCBkgRej.py \
-    #    --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
-    #    --output ${procdir}/../output/${ana}/${training}
+    python getROCBkgRej.py \
+        --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
+        --output ${procdir}/../output/${ana}/${training}
 done
     # get ROC plots 
-    root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\")"
+    nohup root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\")" &
 done
+    
+nohup root -l -b -q "getROCsForAllSmearings.cc(\"${procdir}/../output/\",\"${procdir}/../output/\")" & 
 
 ;;
 

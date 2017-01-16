@@ -9,7 +9,7 @@
 
 // drawing utils
 TString outputDir="./";
-TLegend *leg  = new TLegend(0.15625,0.621654,0.4765625,0.803839,NULL,"brNDC");
+TLegend *leg  = new TLegend(0.15625,0.701654,0.4765625,0.8853839,NULL,"brNDC");
 TCanvas *cROC = new TCanvas("cROC","cROC",700,700);
 bool isFirst = true;
 
@@ -18,6 +18,7 @@ std::vector<int> colors = { kBlue+1, kGreen+2, kRed+2, kOrange, kMagenta, kYello
 int iColor = 0;
 int sColor = 0;
 int iCMax = colors.size();
+TString extraText = "";
 bool dotted = false;
 
 // recursion base case: draw and save
@@ -41,6 +42,10 @@ void plotROC() {
 }
 
 void plotROC(TString filename) {
+    TLatex *latex = new TLatex();
+    latex->SetTextSize(0.04);
+    latex->DrawLatexNDC(0.17,0.4,extraText);
+
     leg->Draw();
     cROC->Print(outputDir+"roc_"+filename+".png");
     cROC->Print(outputDir+"roc_"+filename+".pdf");
@@ -73,6 +78,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
         cROC->SetTickx(1);
         cROC->SetTicky(1);
+        cROC->SetRightMargin(0.05);
+        cROC->SetTopMargin(0.05);
 
         // legend
         leg->SetBorderSize(0);

@@ -66,16 +66,16 @@ if options.lines=="" :
 
 # useful tags (HARDCODED)
 treeNames = {
-            'tracks': 'tracks',
-            'tragam': 'tr+#gamma',
-            'allpar': 'all particles'
+            'tracks': 'Tracks',
+            'tragam': 'Tr+#gamma',
+            'allpar': 'All particles'
             }
 anaNames = {
-            'r0_h0_e0': 'perfect',
+            'r0_h0_e0': 'Perfect',
             'r05_h05_e005': 'HCAL0.05',
             'r05_h01_e005': 'HCAL0.01',
-            'r05_h01_e005_t': 'tracker deg.',
-            'r05_h002_e005_t': 'high-res'
+            'r05_h01_e005_t': 'Tracker deg.',
+            'r05_h002_e005_t': 'High-res'
             }
 ptNames = {
             'pt1': 'p_{T} 1 TeV',
@@ -296,13 +296,37 @@ def main():
         for i in range(len(arrOfNameables)) :
             if i in arrOfNameables : tname += "_"+plotLines[0][i]
 
+        sameMap=[""]*4
+        for tree,pt,sig,ana in [tuple(x) for x in plotLines]:
+            if sameMap[0] == "" :
+                sameMap=[sig,treeNames[tree],ptNames[pt],anaNames[ana]] # change order because of legend format
+                continue
+            if sameMap[0] != sig and sameMap[0] is not None :
+                sameMap[0] = None
+                continue
+            if sameMap[1] != treeNames[tree] and sameMap[1] is not None :
+                sameMap[1] = None
+                continue
+            if sameMap[2] != ptNames[pt] and sameMap[2] is not None:
+                sameMap[2] = None
+                continue
+            if sameMap[3] != anaNames[ana] and sameMap[3] is not None:
+                sameMap[3] = None
+                continue
+
+
         for tree,pt,sig,ana in [tuple(x) for x in plotLines]:
 
             fIn=getFile(pt,sig,ana)
             ttree=fIn.Get("t_"+tree)
             thist=declareHistogram(pt,sig,tree,var)
 
-            leg+=["%s %s, %s, %s"%(sig,treeNames[tree],ptNames[pt],anaNames[ana])]
+            legTitle=[]
+            if sig not in sameMap :  legTitle+=[sig]
+            if treeNames[tree] not in sameMap : legTitle+=[treeNames[tree]]
+            if ptNames[pt] not in sameMap :   legTitle+=[ptNames[pt]]
+            if anaNames[ana] not in sameMap :  legTitle+=[anaNames[ana]]
+            leg+=[', '.join(legTitle)]
 
             wt="j_ptfrac[0]" if ("t_"+tree in treesToWeight and var in branchesToWeight) else "1"
             ttree.Draw("(%s/%s)>>%s"%(var,wt,thist.GetName()))
@@ -312,7 +336,15 @@ def main():
 
         pp.pprint(hists)
 
-        makeCanvas(hists,leg,"SummaryPlot_%s_%s%s"%(options.outname,var,tname))
+        tname='_'.join([x for x in sameMap if x is not None])
+        tname=tname.replace('#','')
+        tname=tname.replace(' ','')
+        tname=tname.replace('+','')
+        tname=tname.replace('{','')
+        tname=tname.replace('}','')
+        tname=tname.replace('p_T','pt')
+        tname=tname.replace('.','p')
+        makeCanvas(hists,leg,"SummaryPlot_%s_%s_%s"%(options.outname,var,tname),otherTextMap=sameMap)
         del hists
         del leg
         ROOT.gROOT.CloseFiles()
@@ -338,7 +370,7 @@ def declareHistogram(pt,tree,sig,var):
         return hist
     return None
 
-def makeCanvas(hs,legs,name):
+def makeCanvas(hs,legs,name,otherTextMap=[]):
     print "name = ", name;
     colors = [1,2,4,6,7,8,9,10,11];
     maxval = -999;
@@ -348,7 +380,7 @@ def makeCanvas(hs,legs,name):
         h.SetLineWidth(2);
         if h.GetMaximum() > maxval: maxval =  h.GetMaximum()
 
-    leg = ROOT.TLegend(0.5,0.7,0.8,0.9)
+    leg = ROOT.TLegend(0.6,0.7,0.9,0.9)
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
     leg.SetTextSize(0.035);
@@ -357,7 +389,7 @@ def makeCanvas(hs,legs,name):
         leg.AddEntry(h,legs[i],"l")
         i+=1;
 
-    c = ROOT.TCanvas("c","c",800,600);
+    c = ROOT.TCanvas("c","c",800,800);
     hs[0].SetMaximum(maxval*1.5);
     hs[0].Draw("hist");
     i = 0;
@@ -366,6 +398,15 @@ def makeCanvas(hs,legs,name):
         h.Draw("histsames");
         i+=1;
     leg.Draw();
+
+    otherText=""
+    for text in otherTextMap :
+        if text is None : continue
+        if otherText=="" : otherText=text
+        else : otherText="#splitline{%s}{%s}"%(otherText,text + (" samples" if len(text)==1 else ""))
+    otherLatex=ROOT.TLatex()
+    otherLatex.SetTextSize(0.04)
+    otherLatex.DrawLatexNDC(0.225,0.927 - 0.06*len([x for x in otherTextMap if x is not None]),otherText)
 
     c.SetLogy(0);
     c.SaveAs(options.outdir+"/"+name+".pdf");
