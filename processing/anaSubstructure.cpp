@@ -104,6 +104,7 @@ int evtCtr;
 float RPARAM;
 
 int njets;
+std::vector<int> j_nbHadrons;
 std::vector<float> j_ptfrac;
 std::vector<float> j_pt;
 std::vector<float> j_eta;
@@ -189,13 +190,15 @@ std::map< TString,std::vector<int> > ids {
     { "c" , {211,-211,321,-321,2212,-2212,3112,-3112,3222,-3222,3312,-3312} },
     { "p" , {22,111}                                                        },
     { "n" , {3122,-3122,130,310,2112,-2112,3322,-3322}                      },
-    { "l" , {-11,11,-13,13,-15,15}                                          }
+    { "l" , {-11,11,-13,13,-15,15}                                          },
+    { "b" , {511,-511,513,-513,515,-515,521,-521,523,-523,525,-525,531,-531,533,-533,535,-535,541,-541,543,-543,545,-545,5122,-5122,5132,5112,-5112,5114,-5114,-5132,5142,-5142,5212,-5212,5214,-5214,5222,-5222,5224,-5224,5232,-5232,5242,-5242,5312,-5312,5314,-5314,5322,-5322,5324,-5324,5332,-5332,5334,-5334,5342,-5342,5412,-5412,5414,-5414,5422,-5422,5424,-5424,5432,-5432,5434,-5434,5442,-5442,5444,-5444,5512,-5512,5514,-5514,5522,-5522,5524,-5524,5532,-5532,5534,-5534,5542,-5542,5544,-5544,5554,-5554}},
 };
 
 std::vector<int> c_ids = ids["c"];
 std::vector<int> p_ids = ids["p"]; 
 std::vector<int> n_ids = ids["n"]; 
 std::vector<int> l_ids = ids["l"]; 
+std::vector<int> b_ids = ids["b"];
 
 int activeAreaRepeats = 1;
 double ghostArea = 0.01;
@@ -428,6 +431,7 @@ void declareBranches( TTree* t ){
 
     t->Branch("njets"            , &njets            );
     t->Branch("j_ptfrac"         , &j_ptfrac         );
+    t->Branch("j_nbHadrons"	 , &j_nbHadrons      );
     t->Branch("j_pt"             , &j_pt             );
     t->Branch("j_eta"            , &j_eta            );
     t->Branch("j_mass"           , &j_mass           );
@@ -505,6 +509,7 @@ void declareBranches( TTree* t ){
 void clearVectors(){
     j_pt.clear();
     j_ptfrac.clear();
+    j_nbHadrons.clear();
     j_eta.clear();
     j_mass.clear();
     j_tau1_b1.clear();
@@ -584,6 +589,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     // std::cout << "old jet pt = " << jet.pt() << ", and particle content flag = " << particleContentFlag << std::endl;
 
     fastjet::PseudoJet curjet;  
+    int nbHadrons =0;
     std::vector< fastjet::PseudoJet > newparticles;
     bool jet_has_no_particles = false;
     if (particleContentFlag == 0) { 
@@ -602,6 +608,10 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
             if (std::find(c_ids.begin(), c_ids.end(), discretePar.at(j).user_index()) != c_ids.end()) {
                 newparticles.push_back(discretePar.at(j));
             }
+
+	    if (std::find(b_ids.begin(), b_ids.end(), discretePar.at(j).user_index()) != b_ids.end()) {
+		nbHadrons++;		
+		}
 
             if (std::find(p_ids.begin(), p_ids.end(), discretePar.at(j).user_index()) != p_ids.end() 
                     && particleContentFlag == 2) {
@@ -629,6 +639,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         }
     }
 
+    j_nbHadrons.push_back(nbHadrons);
     // groomers/taggers
     fastjet::Pruner pruner1( fastjet::cambridge_algorithm, 0.1, 0.5 );
     fastjet::Filter trimmer1( fastjet::Filter(fastjet::JetDefinition(fastjet::kt_algorithm, 0.2), fastjet::SelectorPtFractionMin(0.03)) );
