@@ -67,16 +67,26 @@ if options.lines=="" :
 # useful tags (HARDCODED)
 treeNames = {
             'tracks': 'Tracks',
-            'tragam': 'Tr+#gamma',
-            'allpar': 'All particles'
+            'tragam': 'Tracks+#gamma',
+            'allpar': 'All par.'
             }
-anaNames = {
-            'r0_h0_e0': 'Perfect',
-            'r05_h05_e005': 'HCAL0.05',
-            'r05_h01_e005': 'HCAL0.01',
-            'r05_h01_e005_t': 'Tracker deg.',
-            'r05_h002_e005_t': 'High-res'
-            }
+anaNames={"r0_h0_e0"         : "Perfect" ,
+        "r05_h05_e005"       : "HCAL0.05",
+        "r05_h01_e005"       : "HCAL0.01",
+        "r05_h01_e005_t"     : "F1",
+        "r05_h002_e001_t"    : "F2",
+        "r05_h01_e005_t220"  : "F1",
+        "r05_h002_e001_t220" : "F2",
+        "r05_h01_e005_t500"  : "F1",
+        "r05_h002_e001_t500" : "F2",
+        "r05_h002_e005_t500" : "Extreme-gran.",
+        "r05_h005_e005_t500" : "High-gran.",
+         "r1_h022_e0175_t220": "CMS-like",
+         "r1_h022_e0175_t220_q10": "CMS-like (+PU)",
+         "r1_h022_e050_t110" : "CMS-like (EB)",
+         "r1_h022_e0175_t500": "CMS-like (500 deg.)",
+         "r1_h022_e005_t110" : "CMS-like (110 deg, E0.005)",
+         "r1_h022_e0175_t110": "CMS-like (110 deg.)"}
 ptNames = {
             'pt1': 'p_{T} 1 TeV',
             'pt5': 'p_{T} 5 TeV'
@@ -236,7 +246,7 @@ newPlotLimits= {
 ### DEFAULT PLOT INFORMATION
 #        PLOTNAME          | AXIS TITLE                  | BINS, MIN, MAX |
 plotsnames = [
-        ('j_pt',           "; jet pT (GeV);",                325, 0, 1500),
+        ('j_pt',           "; jet pT (GeV);",                325, 0, 7500),
         ('j_ptfrac',       "; jet energy fraction;",         60, 0, 2),
         ('j_eta',          "; eta;",                         60, -3, 3),
         ('j_c1_b0',        "; C_{1}^{#beta=0};",             20, 0, 0.5),
@@ -244,26 +254,26 @@ plotsnames = [
         ('j_c1_b2',        "; C_{1}^{#beta=2};",             20, 0, 0.5),
         ('j_c2_b1',        "; C_{2}^{#beta=1};",             20, 0, 0.5),
         ('j_c2_b2',        "; C_{2}^{#beta=2};",             20, 0, 0.5),
-        ('j_d2_b1',        "; D_{2}^{#beta=1};",             20, 0, 0.5),
-        ('j_d2_b2',        "; D_{2}^{#beta=2};",             40, 0, 1.0),
+        ('j_d2_b1',        "; D_{2}^{#beta=1};",             70, 0, 8.0),
+        ('j_d2_b2',        "; D_{2}^{#beta=2};",             200, 0, 50.0),
         ('j_multiplicity', "; multiplicity;",                40, 0, 200),
         ('j_mass',         "; mass (GeV);",                  80, 0, 300),
-        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      80, 0, 200),
+        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      80, 0, 125),
         ('j_mass_sdb2',    "; m_{SD}^{#beta=2} (GeV);",      80, 0, 200),
         ('j_mass_prun',    "; m_{prun} (GeV);",              80, 0, 200),
         ('j_mass_sdm1',    "; m_{SD}^{#beta=1} (GeV);",      80, 0, 200),
         ('j_mass_trim',    "; m_{trim} (GeV);",              80, 0, 200),
         ('j_zlogz',        "; #Sigma z logz;",               28, -6, 1),
-        ('j_tau1_b1',      "; N-subjettiness 1, #beta=1;",   100, 0, 150),
-        ('j_tau2_b1',      "; N-subjettiness 2, #beta=1;",   100, 0, 150),
-        ('j_tau3_b1',      "; N-subjettiness 3, #beta=1;",   100, 0, 150),
-        ('j_tau1_b2',      "; N-subjettiness 1, #beta=2;",   100, 0, 150),
-        ('j_tau2_b2',      "; N-subjettiness 2, #beta=2;",   100, 0, 150),
-        ('j_tau3_b2',      "; N-subjettiness 3, #beta=2;",   100, 0, 150),
-        ('j_tau32_b1',     "; N-subjettiness 3/2, #beta=1;", 100, 0, 1),
-        ('j_tau21_b1',     "; N-subjettiness 2/1, #beta=1;", 100, 0, 1),
-        ('j_tau32_b2',     "; N-subjettiness 3/2, #beta=2;", 100, 0, 1),
-        ('j_tau21_b2',     "; N-subjettiness 2/1, #beta=2;", 100, 0, 1)
+        ('j_tau1_b1',      "; #tau_{1}^{#beta=1};",   100, 0, 150),
+        ('j_tau2_b1',      "; #tau_{2}^{#beta=1};",   100, 0, 150),
+        ('j_tau3_b1',      "; #tau_{3}^{#beta=1};",   100, 0, 150),
+        ('j_tau1_b2',      "; #tau_{1}^{#beta=2};",   100, 0, 150),
+        ('j_tau2_b2',      "; #tau_{2}^{#beta=2};",   100, 0, 150),
+        ('j_tau3_b2',      "; #tau_{3}^{#beta=2};",   100, 0, 150),
+        ('j_tau32_b1',     "; #tau_{32}^{#beta=1};", 80, 0, 1),
+        ('j_tau21_b1',     "; #tau_{21}^{#beta=1};", 80, 0, 1),
+        ('j_tau32_b2',     "; #tau_{32}^{#beta=2};", 80, 0, 1),
+        ('j_tau21_b2',     "; #tau_{21}^{#beta=2};", 80, 0, 1)
 ];
 
 treesToWeight = [
@@ -372,7 +382,8 @@ def declareHistogram(pt,tree,sig,var):
 
 def makeCanvas(hs,legs,name,otherTextMap=[]):
     print "name = ", name;
-    colors = [1,2,4,6,7,8,9,10,11];
+    colors = [ROOT.kRed+2,ROOT.kBlue+2,ROOT.kRed,ROOT.kBlue+1,ROOT.kOrange+7,ROOT.kAzure+7] # [1,2,4,6,7,8,9,10,11];
+    #colors = [ROOT.kRed,ROOT.kOrange+7,ROOT.kBlue+1,ROOT.kAzure+7,ROOT.kGreen+2,ROOT.kGreen] # [1,2,4,6,7,8,9,10,11];
     maxval = -999;
 
     for h in hs:
@@ -380,7 +391,7 @@ def makeCanvas(hs,legs,name,otherTextMap=[]):
         h.SetLineWidth(2);
         if h.GetMaximum() > maxval: maxval =  h.GetMaximum()
 
-    leg = ROOT.TLegend(0.6,0.7,0.9,0.9)
+    leg = ROOT.TLegend(0.2,0.5,0.5,0.7)
     leg.SetBorderSize(0);
     leg.SetFillStyle(0);
     leg.SetTextSize(0.035);
@@ -391,11 +402,12 @@ def makeCanvas(hs,legs,name,otherTextMap=[]):
 
     c = ROOT.TCanvas("c","c",800,800);
     hs[0].SetMaximum(maxval*1.5);
-    hs[0].Draw("hist");
+    hs[0].Draw("c hist");
     i = 0;
     for h in hs:
         h.SetLineColor(colors[i])
-        h.Draw("histsames");
+        h.SetLineWidth(2)
+        h.Draw("c histsames");
         i+=1;
     leg.Draw();
 
@@ -409,13 +421,16 @@ def makeCanvas(hs,legs,name,otherTextMap=[]):
     otherLatex.DrawLatexNDC(0.225,0.927 - 0.06*len([x for x in otherTextMap if x is not None]),otherText)
 
     c.SetLogy(0);
+
     c.SaveAs(options.outdir+"/"+name+".pdf");
     c.SaveAs(options.outdir+"/"+name+".png");
+    c.SaveAs(options.outdir+"/"+name+".C");
 
     if options.makeLogPlots :
         c.SetLogy(1);
         c.SaveAs(options.outdir+"/"+name+"_log.pdf");
         c.SaveAs(options.outdir+"/"+name+"_log.png");
+        c.SaveAs(options.outdir+"/"+name+"_log.C");
     del c
     del leg
 

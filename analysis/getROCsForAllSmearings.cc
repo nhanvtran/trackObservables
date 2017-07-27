@@ -14,16 +14,24 @@ void getROCsForAllSmearings(TString inputDir,TString outDir="./") {
     std::vector<TString> ptNames = { "p_{T} 1 TeV", "p_{T} 5 TeV" };
     std::vector<TString> trainings = { "shapesonly", "massonly", "all" };
     std::vector<TString> trainingsNames = { "Shapes only", "Mass only", "All variables" };
-    std::vector<TString> smears = { "r0_h0_e0", 
-                                    "r05_h05_e005", 
-                                    "r05_h01_e005", 
-                                    "r05_h01_e005_t", 
-                                    "r05_h002_e005_t" };
-    std::vector<TString> smearNames = { "Perfect", 
-                                        "HCAL0.05", 
-                                        "HCAL0.01", 
-                                        "Tracker degradation", 
-                                        "Extreme granularity" };
+    std::vector<TString> smears = { "r1_h022_e0175_t220",
+                                    //"r05_h05_e005",
+                                    //"r05_h01_e005",
+                                    "r05_h01_e005_t220", //500",
+                                    //"r05_h002_e005_t500",
+                                    // "r1_h022_e050_t110" ,
+                                    //"r05_h005_e005_t500",
+                                    "r05_h002_e001_t220", //500" } 
+                                    "r0_h0_e0"};
+    std::vector<TString> smearNames = { //"HCAL0.05",
+                                        //"HCAL0.01",
+                                        "CMS-like",
+                                        "F1",
+                                        //"High-gran.",
+                                        //"CMS-like (EB)",
+                                        "F2",
+                                        "Perfect"};
+                                        //"Extreme-gran.", };
     outputDir=outDir+"/";
 
     

@@ -39,10 +39,9 @@ parser.add_option('-b', action='store_true', dest='noX', default=False, help='no
 ########################################################################################################################
 ########################################################################################################################
 def getFilesRecursively(dir,searchstring,additionalstring = None):
-	
 	cfiles = [];
 	for root, dirs, files in os.walk(dir):
-		for file in files:	
+		for file in files:
 			if searchstring in file:
 				if additionalstring == None or additionalstring in file:
 					cfiles.append(os.path.join(root, file))
@@ -54,7 +53,7 @@ def fileVariables(fname):
         for i, l in enumerate(f):
             pass
             variables.append( l.strip().split()[0] );
-    #return i + 1	
+    #return i + 1
     return variables;
 
 def findEff(name,fn,effval):
@@ -76,19 +75,19 @@ def makeSummary( mass, background, effval):
 	#plotDir   = '../plots';
 	searchtag = "%s__%s" % (str(mass),background);
 	filesToRead = getFilesRecursively(plotDir,"RocSummary",searchtag);
-	print filesToRead, len(filesToRead); 
+	print filesToRead, len(filesToRead);
 
 	signals = [];
 	masses = [str(mass)];
-	for i in range(1,5): 
+	for i in range(1,5):
 		tag1,tag2 = "G","G";
 		for ai in range(1,i+1): tag1+="j";
 		for ai in range(1,i+1): tag2+="j";
-		for m in masses: 
+		for m in masses:
 			signals.append( tag1+"N1_"+tag2+"N1__"+m+"_" );
 			if i < 4: signals.append( tag1+"N1_"+tag2+"jN1__"+m+"_" );
 
-	
+
 	variables = fileVariables(filesToRead[0]);
 	nvariables = len(variables);
 	print signals, nvariables
@@ -97,9 +96,9 @@ def makeSummary( mass, background, effval):
 		histograms.append(ROOT.TH1F("h_"+variables[i],";n partons;1/#epsilon_{bkg}",len(signals),2,len(signals)+2));
 
 	theMax = -99;
-	for j in range(len(signals)): 
+	for j in range(len(signals)):
 		for fn in filesToRead:
-			if signals[j] in fn: 
+			if signals[j] in fn:
 				print signals[j], "------"
 				for i in range(nvariables):
 					curvalue = float(findEff(variables[i],fn,effval));
@@ -108,7 +107,7 @@ def makeSummary( mass, background, effval):
 					if curvalue > theMax: theMax = curvalue;
 
 	cSum = ROOT.TCanvas("cSum","cSum",1000,800);
-	
+
 	leg = ROOT.TLegend(0.2,0.75,0.8,0.9);
 	leg.SetNColumns(2);
 	leg.SetFillColor(0);
@@ -157,7 +156,7 @@ if __name__ == '__main__':
 	for mass in masses:
 		for bkg in bkgs:
 			print "Make mass = ",str(mass),", bkg = ", bkg;
-			
+
 			makeSummary( mass, bkg, 10 );
 			makeSummary( mass, bkg, 25 );
 

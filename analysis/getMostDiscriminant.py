@@ -14,7 +14,7 @@ from optparse import OptionParser
 parser = OptionParser()
 
 parser.add_option('--inputs',    action="store",type="string",dest="inputs",default="./output/")
-parser.add_option('--anasubs',   action="store",type="string",dest="anasubs",default="r05_h05_e005,r05_h01_e005,r05_h01_e005_t")
+parser.add_option('--anasubs',   action="store",type="string",dest="anasubs",default="r05_h02_e005,r05_h01_e005,r05_h01_e005_t")
 parser.add_option('--trainings', action="store",type="string",dest="trainings",default="all,shapesonly,massonly")
 parser.add_option('--sigs',      action="store",type="string",dest="sigs", default="tt,WW,ZZ,gg,qq")
 parser.add_option('--bkgs',      action="store",type="string",dest="bkgs", default="tt,WW,ZZ,gg,qq")

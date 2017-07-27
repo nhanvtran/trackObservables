@@ -24,16 +24,59 @@ fi
 cd processing
 procdir=$PWD
 
-anasubs=(r0_h0_e0 
-r05_h05_e005 
-r05_h01_e005 
-r05_h01_e005_t 
-r05_h002_e005_t)
+# Perfect
+# H0.05
+# H0.01
+# F1 
+# High-res
+# CMS-like EB
+# CMS-like EE
+# Ultra-high res
+# F2
+#anasubs=(r0_h0_e0 
+#r05_h05_e005 
+#r05_h01_e005 
+#r05_h01_e005_t500 
+#r05_h002_e005_t500
+# r1_h022_e050_t110
+# r1_h022_e0175_t110
+#r05_h005_e005_t500
+#r05_h002_e001_t500) 
 
-anacfgs=(z r0.5:h0.05:e0.005 
-r0.5:h0.01:e0.005
-r0.5:h0.01:e0.005:t
-r0.5:h0.002:e0.005:t)
+#anasubs=(r1_h022_e0175)
+#anacfgs=(r1.0:h0.022:e0.0175)
+
+#anasubs=(r1_h022_e0175_t220)
+#anacfgs=(r1.0:h0.022:e0.0175:t220.0)
+
+#anasubs=(r0_h0_e0)
+#anacfgs=(z)
+
+#anasubs=(r1_h022_e0175_t220_q10)
+#anacfgs=(r1.0:h0.022:e0.0175:t220.0:q10)
+
+# t220 F1 F2
+anasubs=(r05_h01_e005_t220 
+r05_h002_e001_t220
+r1_h022_e0175_t220)
+anacfgs=(r0.5:h0.010:e0.005:t220.0
+r0.5:h0.002:e0.001:t220.0 
+r1.0:h0.022:e0.0175:t220.0)
+
+#anasubs=(r1_h022_e0175_t500)
+##r1_h022_e005_t110) 
+#anacfgs=(r1:h0.022:e0.0175:t500.0)
+##r1:h0.022:e0.005:t110.0) 
+
+#anacfgs=(z 
+#r0.5:h0.050:e0.005 
+#r0.5:h0.010:e0.005
+#r0.5:h0.010:e0.005:t500.0
+#r0.5:h0.002:e0.005:t500.0
+#r1.0:h0.022:e0.0500:t110.0  
+#r1.0:h0.022:e0.0175:t110.0  
+#r0.5:h0.005:e0.005:t500.0 
+#r0.5:h0.002:e0.001:t500.0) 
 
 filehandles=(
 processed-pythia82-fcc100-WW-pt5-50k 
@@ -47,8 +90,7 @@ processed-pythia82-lhc13-tt-pt1-50k
 processed-pythia82-fcc100-qq-pt5-50k 
 processed-pythia82-lhc13-qq-pt1-50k)
 
-trainings=(
-shapesonly
+trainings=(shapesonly
 massonly
 all)
 
@@ -68,6 +110,7 @@ echo "Making executables"
 make
 eval `eos root://cmseos.fnal.gov rm /store/user/${USER}/TrackObservablesStudy/anaSubstructure`
 xrdcp anaSubstructure root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
+xrdcp lhc14-pythia8-4C-minbias-nev100.pu14.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
 
 ;;
 
@@ -81,21 +124,25 @@ for ana in ${anasubs[*]} ; do
     eval `eos root://cmseos.fnal.gov mkdir /store/user/${USER}/${ana}`
 
     # remove existing output files from EOS directory 
-    for tfile in $(xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana}); do
+    for tfhandle in ${filehandles[*]} ; do
+    for tfile in $(xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana} | grep ${tfhandle}); do
+        echo ${tfile}
         filehandle=(${tfile//\// })
         roothandle=${filehandle[${#filehandle[@]}-1]}
         eval `eos root://cmseos.fnal.gov rm /store/user/${USER}/${ana}/${roothandle}`
     done
+        # remove output log files
+        prefix="processed-"
+        rm ./${ana}/*${tfhandle#$prefix}*
+    done
 
-    # remove output log files
-    rm ./${ana}/*
 
     # submit condor jobs
     python SubmitCondor.py --indir /store/user/${USER}/TrackObservablesStudy/fromMarat/ \
         --outdir ./${ana}/ \
         --maxEvents 50000 \
-        --evPerJob 10000 \
-        --anaSubLoc root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/anaSubstructure \
+        --evPerJob 500 \
+        --anaSubLoc root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/ \
         --outdirname ${ana} \
         --cfg ${anacfgs[i]}
 
@@ -120,10 +167,12 @@ for fileh in ${filehandles[*]} ; do
     echo " "
     echo "Working on ${fileh}-${ana}.root"
     echo " "
-    hadd ${fileh}-${ana}.root  \
+    hadd -k ${fileh}-${ana}.root  \
         `xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana} | grep root | grep ${fileh}`
+    mv ${fileh}-${ana}.root ../../samples/
 done
 done
+
 
 ;;
 
@@ -150,8 +199,8 @@ for fileh in ${filehandles[*]} ; do
     echo "Working on ${fileh}-${ana}.root"
     echo " "
 
-    cmd="${cmd} && python quickPlotter.py -b --basedir ../processing"
-    cmd="${cmd} --basedir ../processing"
+    cmd="${cmd} && python quickPlotter.py -b"
+    cmd="${cmd} --basedir ../../samples"
     cmd="${cmd} --ana ${ana}"
     cmd="${cmd} -o ./plots/${ana}/ > ${fileh}-${ana}.out"
 done
@@ -166,7 +215,7 @@ WWW )
 ############################### WWW #################################
 echo "Sending plots to your www directory on LXPLUS"
 
-cd ${procdir}/../plotting/
+cd ${procdir}/../plotting/plots
 
 if [[ "$2" == "" ]]; then
     echo ""
@@ -175,10 +224,12 @@ if [[ "$2" == "" ]]; then
     exit 1;
 fi
 
-for ana in ${anasubs[*]} ; do
-    scp plots/${ana}/* \
-        ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/${ana}/
-done
+
+rm plots.tar.gz
+find ./r05_h002_e001_t/ > filenames.txt 
+tar -czvf plots.tar.gz -T filenames.txt 
+scp plots.tar.gz \
+    ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
 
 ;;
 
@@ -263,7 +314,7 @@ for ana in ${anasubs[*]} ; do
 for training in ${trainings[*]} ; do
     echo "For ${ana}_${training}:"
     mkdir -p ${procdir}/../output/${ana}/eosrootfiles/${training}
-    rm   -rf ${procdir}/../output/${ana}/eosrootfiles/${training}/*
+    #rm   -rf ${procdir}/../output/${ana}/eosrootfiles/${training}/*
         
     # move existing output files from EOS directory 
     echo " - Moving files..."
@@ -290,27 +341,31 @@ BDTS_PLOT )
 echo "Plotting ROCs and grabbing separation statistics"
 echo ""
 
+cd ${procdir}/../analysis/
+
 for ana in ${anasubs[*]} ; do
 for training in ${trainings[*]} ; do
     mkdir -p ${procdir}/../output/${ana}/${training}
     echo " - Plotting for ${ana}_${training}"
     cd ${procdir}/../analysis/
 
-    ## get separation statisics 
+    continue 
+    ### get separation statisics 
     python getSeparationTXT.py \
         --inputs ./trainings_${ana}_${training}/ \
         --output ${procdir}/../output/${ana}/${training}
 
-    ## get ROC background rejection grids 
+    ### get ROC background rejection grids 
     python getROCBkgRej.py \
         --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
-        --output ${procdir}/../output/${ana}/${training}
+        --output ${procdir}/../output/${ana}/${training} \
+        --ana ${ana} --training ${training}
 done
     # get ROC plots 
-    nohup root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\")" &
+    #root -l -b -q "getROCs.cc(\"${procdir}/../output/${ana}/eosrootfiles\",\"${procdir}/../output/${ana}\",\"${ana}\")" 
 done
     
-nohup root -l -b -q "getROCsForAllSmearings.cc(\"${procdir}/../output/\",\"${procdir}/../output/\")" & 
+root -l -b -q "getROCsForAllSmearings.cc(\"${procdir}/../output/\",\"${procdir}/../output/\")" & 
 
 ;;
 
@@ -327,40 +382,42 @@ fi
 
 rm output/output.tar.gz
 cd ${procdir}/../output/
-tar -czvf output.tar.gz * --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
+#tar -czvf output.tar.gz  */*/BackgroundRejection* --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
+tar -czvf output.tar.gz ./Summary* --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
 scp ${procdir}/../output/output.tar.gz \
     ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/SmearPlots/$2/
 
 ;;
 
 SUMMARY )
-############################ BDT_WWW ################################
+############################ SUMMARY ################################
 echo "Making summary projections"
 
 # hardcoded settings: anaSubs to use
-aloAna="r05_h05_e005,r05_h01_e005,r05_h01_e005_t"
+aloAna="r0_h0_e0" #,r1_h022_e0175_t220,r05_h01_e005_t220,r05_h002_e001_t220"
 
 # kinds of plots:
 # 1) a plot for every (tree,pt); draw (sig,ana)
 # 2) a plot for every (pt,ana) ; draw (sig,tree)
 # 3) a plot for every (pt,ana) ; draw (sig,tree)
+#lines=(
+#**,**,*,*
+#*,**,*,**
+#*,**,*,**)
 lines=(
-**,**,*,*
+*,**,*,**
 *,**,*,**
 *,**,*,**)
 # a list of csv of signals to use for each plot
-sigs=(W,g W,q t,g)
+sigs=(W,g g,t)
 # a list of csv of variables for each set of plots
 varLists=(
-j_mass_mmdt,j_d2_b2
-j_mass_mmdt,j_d2_b2
-j_mass_mmdt,j_tau32_b1
+j_mass_mmdt,j_tau21_b1
 )
 # name indicating kind of plot
 nameList=(
-Wvg
-Wvq
-gvt
+WvgDetecComp
+gvtDetecComp
 )
 
 cd ${procdir}/../plotting/
@@ -371,7 +428,7 @@ for sig  in ${sigs[*]} ; do
 
     cmd="${cmd} && python plotSampleSummary.py"
     cmd="${cmd} --basedir /uscms_data/d3/ecoleman/TrackObservablesStudy/samples/"
-    cmd="${cmd} --logPlots"
+    #cmd="${cmd} --logPlots"
     cmd="${cmd} --sigs ${sig}"
     cmd="${cmd} --vars ${varLists[i]}"
     cmd="${cmd} --ana ${aloAna}"
@@ -383,8 +440,19 @@ for sig  in ${sigs[*]} ; do
 
 done
     
-nohup sh -c "eval ${cmd}" &
+eval "${cmd}"
 
 ;;
+ANATEST )
+############################ ANATEST ################################
+testconfig="z"
 
+echo "Test anasubstructure with config ${testconfig}"
+
+cd processing
+
+xrdcp root://cmseos.fnal.gov:///store/user/ecoleman/TrackObservablesStudy/fromMarat/pythia82-lhc13-WW-pt1-50k-4.lhe .
+./anaSubstructure pythia82-lhc13-WW-pt1-50k-4 ./ 200 500 ${testconfig} 1000 
+
+;;
 esac

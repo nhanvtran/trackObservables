@@ -9,7 +9,7 @@
 
 // drawing utils
 TString outputDir="./";
-TLegend *leg  = new TLegend(0.15625,0.701654,0.4765625,0.8853839,NULL,"brNDC");
+TLegend *leg  = new TLegend(0.156,0.50,0.65,0.89,NULL,"brNDC");
 TCanvas *cROC = new TCanvas("cROC","cROC",700,700);
 bool isFirst = true;
 
@@ -44,14 +44,16 @@ void plotROC() {
 void plotROC(TString filename) {
     TLatex *latex = new TLatex();
     latex->SetTextSize(0.04);
-    latex->DrawLatexNDC(0.17,0.4,extraText);
+    latex->DrawLatexNDC(0.725,0.25,extraText);
 
     leg->Draw();
     cROC->Print(outputDir+"roc_"+filename+".png");
     cROC->Print(outputDir+"roc_"+filename+".pdf");
+    cROC->Print(outputDir+"roc_"+filename+".C");
     cROC->SetLogy();
     cROC->Print(outputDir+"roc_log_"+filename+".png");
     cROC->Print(outputDir+"roc_log_"+filename+".pdf");
+    cROC->Print(outputDir+"roc_log_"+filename+".C");
     
     leg->Clear();
     cROC->SetLogy(0);
@@ -110,9 +112,10 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         MVA_BDTG_effBvsS->GetYaxis()->SetTitleOffset(1.2);
         MVA_BDTG_effBvsS->GetXaxis()->SetLabelSize(0.03);
         MVA_BDTG_effBvsS->GetYaxis()->SetLabelSize(0.03);
+        MVA_BDTG_effBvsS->GetYaxis()->SetRangeUser(10e-05,1);
         MVA_BDTG_effBvsS->SetMaximum(1);
 
-        MVA_BDTG_effBvsS->Draw();
+        MVA_BDTG_effBvsS->Draw("C");
 
         leg->AddEntry(MVA_BDTG_effBvsS, label,"l");
         //file->Close();
@@ -132,7 +135,7 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         }
         MVA_BDTG_effBvsS->SetLineWidth(3);
         MVA_BDTG_effBvsS->SetMaximum(1);
-        MVA_BDTG_effBvsS->Draw("same");
+        MVA_BDTG_effBvsS->Draw("C same");
         leg->AddEntry(MVA_BDTG_effBvsS, label, (dotted ? "lp" : "l"));
         //file->Close();
     }

@@ -19,6 +19,8 @@ parser = OptionParser()
 
 parser.add_option('--inputs',action="store",type="string",dest="inputs",default="./tmp/")
 parser.add_option('--output',action="store",type="string",dest="output",default="./")
+parser.add_option('--ana'   ,action="store",type="string",dest="ana",default="")
+parser.add_option('--training',action="store",type="string",dest="training",default="")
 parser.add_option('-n', '--name',action="store",type="string",dest="outname",default="bkgRejPwr_at_Sig0p5")
 
 (options, args) = parser.parse_args()
@@ -33,6 +35,25 @@ procsLen = len(procs)
 
 plotMatrix={}
 maxVal=0
+
+ptNames={ "pt1" : "p_{T} 1 TeV",
+        "pt5"   : "p_{T} 5 TeV"}
+anaNames={"r0_h0_e0"       :   "Perfect" ,
+        "r05_h05_e005"     :   "HCAL0.05",
+        "r05_h01_e005"     :   "HCAL0.01",
+        "r05_h01_e005_t":   "F1",
+        "r05_h002_e001_t":  "F2",
+        "r05_h01_e005_t500":   "F1",
+        "r05_h002_e001_t500":  "F2",
+        "r05_h002_e005_t500":  "Extreme-gran.",
+        "r05_h005_e005_t500":  "High-gran.",
+         "r1_h022_e050_t110":  "CMS-like (EB)",
+         "r1_h022_e0175_t110": "CMS-like"}
+trainingNames={ "all" : "All Variables",
+        "shapesonly"  : "Shape Variables",
+        "massonly"    : "Mass Variables"}
+trainingName="" if options.training not in trainingNames else trainingNames[options.training]
+anaName = None if options.ana not in anaNames else anaNames[options.ana]
 
 # Prepare arrays
 for tree in trees:
@@ -133,7 +154,7 @@ pp.pprint(plotMatrix)
 
 # Create plots tracks/allpar ///// tragam/allpar
 
-for pt in [("pt1")] :
+for pt in ["pt1","pt5"] :
     c=ROOT.TCanvas("","",800,800)
     c.cd()
 
@@ -141,9 +162,17 @@ for pt in [("pt1")] :
 
     for i in xrange(0,len(procs)) :
         for j in xrange(i+1,len(procs)) :
-           allparNum=plotMatrix["allpar"][pt][procs[i]][procs[j]]
-           matHisto.Fill(0.5+i, 0.5+j, allparNum/plotMatrix["tracks"][pt][procs[i]][procs[j]])
-           matHisto.Fill(0.5+j, 0.5+i, allparNum/plotMatrix["tragam"][pt][procs[i]][procs[j]])
+           print procs[i],procs[j]
+           try :
+               allparNum=plotMatrix["allpar"][pt][procs[i]][procs[j]]
+               matHisto.Fill(0.5+i, 0.5+j, allparNum/plotMatrix["tracks"][pt][procs[i]][procs[j]])
+               matHisto.Fill(0.5+j, 0.5+i, allparNum/plotMatrix["tragam"][pt][procs[i]][procs[j]])
+           except KeyError :
+               print "WARNING: Need to switch procs!"
+               allparNum=plotMatrix["allpar"][pt][procs[j]][procs[i]]
+               matHisto.Fill(0.5+i, 0.5+j, allparNum/plotMatrix["tracks"][pt][procs[j]][procs[i]])
+               matHisto.Fill(0.5+j, 0.5+i, allparNum/plotMatrix["tragam"][pt][procs[j]][procs[i]])
+
 
     xax=matHisto.GetXaxis()
     xax.SetTitle("")
@@ -161,14 +190,16 @@ for pt in [("pt1")] :
     ROOT.gStyle.SetOptStat(0)
 
     zax=matHisto.GetZaxis()
-    zax.SetRangeUser(0,75)
+    zax.SetRangeUser(1,75)
     zax.SetLabelSize(0.02)
 
 
     matHisto.SetTitle("Background Rejection at 50% Signal Efficiency")
-    yax.SetTitle("Ratios, %s"%(pt))
+    yax.SetTitle("%s Trainings, %s%s"%(trainingName,ptNames[pt],("" if anaName is None else ", "+anaName)))
+    yax.SetTitleOffset(1.2)
 
     matHisto.Draw("COLZ TEXT")
+    c.SetLogz()
 
     sepline=ROOT.TLine()
     sepline.SetLineColor(ROOT.kRed)

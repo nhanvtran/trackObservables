@@ -214,7 +214,7 @@ int main (int argc, char **argv) {
     std::string tag   = argv[5];      // detector type
     std::string jobid = argv[6];      // condorization job id 
     
-    RPARAM = 0.8;
+    RPARAM = 0.4;
     smearDist = new TRandom3();
 
     char inName[192];
@@ -264,7 +264,7 @@ int main (int argc, char **argv) {
         if (evtCtr < min) continue;
         if (evtCtr > max) break;
         
-        if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
+        if (true /*evtCtr % 100 == 0*/) std::cout << "event " << evtCtr << "\n";
         
         // per event
         particles.clear();
@@ -314,7 +314,7 @@ int main (int argc, char **argv) {
 
         // Discretize neutral hadrons
         static Double_t discretize = findOption("h",tag); //(tag.find("h")!=std::string::npos);
-        static Double_t numberOfPileup=20.*(tag.find("q")!=std::string::npos);
+        static Double_t numberOfPileup=(tag.find("q")!=std::string::npos) ? findOption("q",tag) : 0;
         static Double_t discretizeEcal = findOption("e",tag); //(tag.find("e")!=std::string::npos);
 
         // Threshold above which track reconstruction in jet core is expected 
@@ -322,7 +322,7 @@ int main (int argc, char **argv) {
         // Take value where CMS HCAL resolution gets better than tracking resolution
         
         //static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 110 : 1e10;
-        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? 500 : 1e10;
+        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos) ? findOption("t", tag) : 1e10;
 
         // Distance to nearest neighbor below which track reconstruction in jet 
         // core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
@@ -819,44 +819,47 @@ void smearJetPt(fastjet::PseudoJet &jet) {
 
         if (std::find(tidSet.begin(), tidSet.end(), jet.user_index()) != tidSet.end()) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
-                // CMS TDR tuning
-                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); 
-                
-                // Delphes CMS tuning 
-                // github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
-                //energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); 
+                //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
 
-            } else if (it.first=="p")                               // ---------------------- photon resolution
-                // CMS TDR 
-                energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.005,2));
-                
-                // CMS tuning 
-                // github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); 
+            } else if (it.first=="p") {                              // ---------------------- photon resolution
+                // CMS TDR
+                //energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.15/jet.e(),2)+pow(0.005,2)); 
+
+                // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
+                //energyResolution=sqrt(pow(0.027/sqrt(1.6*jet.e()),2)+pow(0.15/1.6/jet.e(),2)+pow(1.6*0.005,2)); 
+
+                // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
+                energyResolution=sqrt(pow(0.027/sqrt(jet.e()/1.6),2)+pow(0.15/jet.e()*1.6,2)+pow(0.005,2)); 
+
+                // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
                 //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); 
+            } else if (it.first=="n") {                              // -------------- neutral hadron resolution
 
-            else if (it.first=="n")                               // -------------- neutral hadron resolution
-                // CMS JET JINST
+                // CMS JET JINST 
                 //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); 
-                
-                // CMS JET JINST + factor 6 for the fact that 60% charged hadrons are 
-                //                 substracted before 10% neutral hadrons are reconstructed
-                energyResolution=sqrt(pow(1.20/sqrt(6.*jet.e()),2)+pow(6.*0.05,2)); 
 
-                // CMS tuning 
-                // github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
+                //energyResolution=sqrt(pow(1.20/sqrt(7.*jet.e()),2)+pow(7.*0.05,2)); 
+
+                // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
+                energyResolution=sqrt(pow(1.20/sqrt(jet.e()/7.),2)+pow(0.05,2)); 
+
+                // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
                 //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); 
 
-            else if (it.first=="l")                               // ---------------------- lepton resolution
+            } else if (it.first=="l") {                              // ---------------------- lepton resolution
+                // CMS TDR
+                //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); 
 
-                energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
-
-            else {                                                // ------------------------ everything else
-                
+                // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); 
+            } else {                                                // ------------------------ everything else
                 std::cout << "WARNING: Input jet has unlisted PDG ID!" << std:: endl;
                 energyResolution=0; // assume perfect resolution for everything else (?)
-
             }
-            
+
             // std::cout << it.first << " " << energyResolution << std::endl;
         }
     }
@@ -888,11 +891,11 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     static Double_t etaMin = -3,
                     etaMax = 3,
-                    //etaRes = 0.087/2., // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    //etaRes = 0.087/sqrt(12), // CMS TDR, factor 3 since particle flow cluster algorithm reaches this precision
                     etaRes = discretize, 
                     phiMin = 0, 
                     phiMax = 2*TMath::Pi(),
-                    //phiRes = 0.087/2.; // CMS TDR, factor 2 since particle flow cluster algorithm reaches this precision
+                    //phiRes = 0.087/sqrt(12).; // CMS TDR, factor 3 since particle flow cluster algorithm reaches this precision
                     phiRes = discretize; 
     static Int_t etaNBins = TMath::Floor((etaMax - etaMin)/etaRes), 
                  phiNBins = TMath::Floor((phiMax - phiMin)/phiRes);
@@ -908,11 +911,19 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
     TH2D* ecalGrid = new TH2D("ecalGrid","ecalGrid",etaNBinsEcal,etaMin,etaMax,phiNBinsEcal,phiMin,phiMax);  
     
-    // neutral pileup density rho = 0.3 GeV / unit area / pileup interaction
-    static Double_t pileupEnergyInCell = numberOfPileup * 0.3 *etaRes*phiRes; 
-    for (int i = 0; i < etaNBins; ++i)
-        for (int j = 0; j < phiNBins; ++j)
-            hcalGrid->SetBinContent(i+1,j+1,pileupEnergyInCell);
+    // Add in neutral pileup: 0.3 * "q" GeV total in detector on average per event
+    static Double_t pileupEnergyInDetector = numberOfPileup * 0.3 ; 
+    double addedPileupEnergy = 0;
+    while(addedPileupEnergy < pileupEnergyInDetector) {
+        int randPhi = smearDist->Uniform(0,2*TMath::Pi());
+        int randEta = smearDist->Uniform(-3,3);
+        double randEnergy = smearDist->Exp(1/6)+0.5; // e^-6t only above 500 MeV
+
+        ecalGrid->Fill(randEta,randPhi,randEnergy);
+        hcalGrid->Fill(randEta,randPhi,randEnergy);
+    
+        addedPileupEnergy += randEnergy;
+    }
 
     std::vector<fastjet::PseudoJet> newparticles;
     for (unsigned int i = 0; i < particles.size(); ++i){
