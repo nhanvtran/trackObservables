@@ -12,8 +12,10 @@ void getROCsForAllSmearings(TString inputDir,TString outDir="./") {
     std::vector<TString> treeNames = { "All particles", "Tracks only", "Tracks+#gamma" };
     std::vector<TString> pts = { "pt1", "pt5" };
     std::vector<TString> ptNames = { "p_{T} 1 TeV", "p_{T} 5 TeV" };
-    std::vector<TString> trainings = { "shapesonly", "massonly", "all" };
-    std::vector<TString> trainingsNames = { "Shapes only", "Mass only", "All variables" };
+    std::vector<TString> trainings = { //"shapesonly", "massonly", "all",
+                                       "shapesonlycut", "massonlycut", "allcut" };
+    std::vector<TString> trainingsNames = { //"Shapes only", "Mass only", "All variables", 
+                                            "Shapes only", "Mass only", "All observables" };
     std::vector<TString> smears = { "r1_h022_e0175_t220",
                                     //"r05_h05_e005",
                                     //"r05_h01_e005",

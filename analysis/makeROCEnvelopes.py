@@ -44,11 +44,11 @@ parser = OptionParser()
 
 parser.add_option('--indir',action="store",type="string",dest="indir",default="./output/")
 parser.add_option('--outdir',action="store",type="string",dest="outdir",default="./output/")
-parser.add_option('--pts',action="store",type="string",dest="pts",default="pt1")
-parser.add_option('--trainings',action="store",type="string",dest="trainings",default="all")
+parser.add_option('--pts',action="store",type="string",dest="pts",default="pt5")
+parser.add_option('--trainings',action="store",type="string",dest="trainings",default="allcut")
 parser.add_option('--anasubs',action="store",type="string",dest="anasubs",default="r1_h022_e0175_t220,r05_h01_e005_t220,r05_h002_e001_t220")
-parser.add_option('--infos',action="store",type="string",dest="infos",default="allpar,tragam,tracks")
-parser.add_option('--procs',action="store",type="string",dest="procs",default="W,q;W,Z;q,g")
+parser.add_option('--infos',action="store",type="string",dest="infos",default="tracks,tragam,allpar")
+parser.add_option('--procs',action="store",type="string",dest="procs",default="W,Z")
 
 (options, args) = parser.parse_args()
 
@@ -61,10 +61,11 @@ infoList     = options.infos.split(',')
 infoNames = {
         "tracks": "Tracks",
         "tragam": "Tracks+#gamma",
-        "allpar": "All par."
+        "allpar": "All particles"
         }
 trainingNames = {
-        "all" : "All vars."
+        "all"    : "All observables",
+        "allcut" : "All observables"
         }
 ptNames = {
         "pt5" : "p_{T} 5 TeV",
@@ -123,10 +124,10 @@ for procs in procList :
     mg.GetYaxis().SetRangeUser(5*10e-06,1);
     mg.GetXaxis().SetTitle("Signal Efficiency")
     mg.GetYaxis().SetTitle("Background Efficiency")
-    mg.GetXaxis().SetTitleSize(0.04);
-    mg.GetYaxis().SetTitleSize(0.04);
+    mg.GetXaxis().SetTitleSize(0.045);
+    mg.GetYaxis().SetTitleSize(0.045);
     mg.GetXaxis().SetTitleOffset(1.05);
-    mg.GetYaxis().SetTitleOffset(1.2);
+    mg.GetYaxis().SetTitleOffset(1.05);
     mg.GetXaxis().SetLabelSize(0.03);
     mg.GetYaxis().SetLabelSize(0.03);
     canvas.SetTickx(1);
@@ -135,7 +136,7 @@ for procs in procList :
     canvas.SetTopMargin(0.05);
     leg=canvas.BuildLegend(0.15,0.68,0.47,0.88,"")
     leg.SetBorderSize(0);
-    leg.SetTextSize(0.035);
+    leg.SetTextSize(0.06);
     leg.SetTextFont(42);
     leg.SetLineColor(1);
     leg.SetLineStyle(1);
@@ -147,8 +148,8 @@ for procs in procList :
     extra = "#splitline{"+sg+" vs. "+bg+"}{"+extra+"}";
 
     latex = ROOT.TLatex();
-    latex.SetTextSize(0.04);
-    latex.DrawLatexNDC(0.725,0.25,extra);
+    latex.SetTextSize(0.05);
+    latex.DrawLatexNDC(0.575,0.3,extra);
 
     canvas.Modified()
     canvas.Update()
@@ -156,3 +157,4 @@ for procs in procList :
     raw_input()
     canvas.SaveAs("ROCEnvelope_"+sg+bg+"_"+pt+".png")
     canvas.SaveAs("ROCEnvelope_"+sg+bg+"_"+pt+".pdf")
+    canvas.SaveAs("ROCEnvelope_"+sg+bg+"_"+pt+".C")

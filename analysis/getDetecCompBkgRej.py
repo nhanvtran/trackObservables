@@ -19,36 +19,32 @@ parser = OptionParser()
 
 parser.add_option('--inputs',action="store",type="string",dest="inputs",default="./tmp/")
 parser.add_option('--output',action="store",type="string",dest="output",default="./")
-parser.add_option('--ana'   ,action="store",type="string",dest="ana",default="")
-parser.add_option('--training',action="store",type="string",dest="training",default="")
-parser.add_option('-n', '--name',action="store",type="string",dest="outname",default="bkgRejPwr_at_Sig0p5")
+parser.add_option('--training',action="store",type="string",dest="training",default="allcut")
+parser.add_option('--tree',action="store",type="string",dest="tree",default="allpar")
+parser.add_option('-n', '--name',action="store",type="string",dest="outname",default="DetecComp_bkgRejPwr_at_Sig0p5")
 
 (options, args) = parser.parse_args()
 
-onlyfiles=os.listdir(options.inputs)
+onlyfiles=glob.glob(options.inputs)
 fout = open('%s/%s.txt'%(options.output,options.outname),'w')
 
-trees=["tragam","tracks","allpar"]
+treeNames={ "allpar" : "All particles",
+            "tragam" : "Tracks+#gamma",
+            "tracks" : "Tracks only" }
+treename = treeNames[options.tree]
+
 pts=['pt1','pt5']
 procs=["W","Z","q","g","t"]
 procsLen = len(procs)
 
 plotMatrix={}
-maxVal=0
-
 ptNames={ "pt1" : "p_{T} 1 TeV",
         "pt5"   : "p_{T} 5 TeV"}
+anas = ["CMS-like", "F1", "F2"]
 anaNames={"r0_h0_e0"       :   "Perfect" ,
-        "r05_h05_e005"     :   "HCAL0.05",
-        "r05_h01_e005"     :   "HCAL0.01",
-        "r05_h01_e005_t":   "F1",
-        "r05_h002_e001_t":  "F2",
-        "r05_h01_e005_t500":   "F1",
-        "r05_h002_e001_t500":  "F2",
-        "r05_h002_e005_t500":  "Extreme-gran.",
-        "r05_h005_e005_t500":  "High-gran.",
-         "r1_h022_e050_t110":  "CMS-like (EB)",
-         "r1_h022_e0175_t110": "CMS-like"}
+        "r05_h01_e005_t220":   "F1",
+        "r05_h002_e001_t220":  "F2",
+         "r1_h022_e0175_t220": "CMS-like"}
 trainingNames={ "all" : "All observables",
         "shapesonly"  : "Shape observables",
         "massonly"    : "Mass observables",
@@ -56,49 +52,53 @@ trainingNames={ "all" : "All observables",
         "shapesonlycut"  : "Shapes observables",
         "massonlycut"    : "Mass observables" }
 trainingName="" if options.training not in trainingNames else trainingNames[options.training]
-anaName = None if options.ana not in anaNames else anaNames[options.ana]
 
 # Prepare arrays
-for tree in trees:
-    plotMatrix[tree]={}
+for ana in anas:
+    plotMatrix[ana]={}
     for pt in pts:
-        plotMatrix[tree][pt]={}
+        plotMatrix[ana][pt]={}
         for proc in procs:
-            plotMatrix[tree][pt][proc]={}
+            plotMatrix[ana][pt][proc]={}
 
 pp = pprint.PrettyPrinter(indent=4)
 pp.pprint(onlyfiles)
 pp.pprint(plotMatrix)
 
 # Fill arrays and make output txt file
-for fname in onlyfiles :
-    print fname
-    fIn=ROOT.TFile("%s/%s"%(options.inputs,fname))
+for tfname in onlyfiles :
+    print tfname
+    if options.tree not in tfname : continue
+
+    anaName = tfname.split('/')[-4]
+    anaName = anaNames[anaName]
+
+    fname = tfname.split('/')[-1]
+    fIn=ROOT.TFile(tfname)
 
     MVAh=fIn.Get("Method_BDT/BDTG/MVA_BDTG_effBvsS")
     halfBin=MVAh.GetXaxis().FindBin(0.60)
-
     cat1=fname.split("_")[2]
     cat2=fname.split("_")[3]
     treename=fname.split("_")[-1].replace('.root','')
-    print "\t - %s %s %s %s"%(treename,cat1.split('-')[1],cat1[0],cat2[0])
+    print "\t - %s %s %s %s %s"%(anaName,treename,cat1.split('-')[1],cat1[0],cat2[0])
 
     if MVAh.GetBinContent(halfBin) == 0 :
         print "ERROR: bin content is 0"
-        bkgRej=-1
-    else :
-        bkgRej=1/MVAh.GetBinContent(halfBin)
-    plotMatrix[treename][cat1.split('-')[1]][cat1[0]][cat2[0]]=bkgRej
-    #plotMatrix[treename][cat1.split('-')[1]][cat2[0]][cat1[0]]=bkgRej
-    fout.write("%s \t %s \t %s \t %.3f\n"%(cat1, cat2, treename, bkgRej))
+        continue
+    bkgRej=1/MVAh.GetBinContent(halfBin)
+    plotMatrix[anaName][cat1.split('-')[1]][cat1[0]][cat2[0]]=bkgRej
+    fout.write("%s \t %s \t %s \t %.3f\n"%(anaName, cat1, cat2, bkgRej))
 
     fIn.Close()
 
 fout.close()
 
+exit
+
 pp.pprint(plotMatrix)
 
-# Create plots tracks/allpar ///// tragam/allpar
+# Create plots F1/CMS ///// F2/CMS
 
 for pt in ["pt1","pt5"] :
     c=ROOT.TCanvas("","",800,800)
@@ -110,16 +110,15 @@ for pt in ["pt1","pt5"] :
         for j in xrange(i+1,len(procs)) :
            print procs[i],procs[j]
            try :
-               allparNum=plotMatrix["allpar"][pt][procs[i]][procs[j]]
-               tracksNum=plotMatrix["tracks"][pt][procs[i]][procs[j]]
-               tragamNum=plotMatrix["tragam"][pt][procs[i]][procs[j]]
-
-               if allparNum > 0 :
-                    matHisto.Fill(0.5+i, 0.5+j, allparNum/tracksNum)
-                    matHisto.Fill(0.5+j, 0.5+i, allparNum/tragamNum)
+               CMSnum=plotMatrix["CMS-like"][pt][procs[i]][procs[j]]
+               matHisto.Fill(0.5+i, 0.5+j, plotMatrix["F1"][pt][procs[i]][procs[j]]/CMSnum)
+               matHisto.Fill(0.5+j, 0.5+i, plotMatrix["F2"][pt][procs[i]][procs[j]]/CMSnum)
            except KeyError :
                print "WARNING: Need to switch procs!"
-               exit()
+               CMSnum=plotMatrix["CMS-like"][pt][procs[j]][procs[i]]
+               matHisto.Fill(0.5+i, 0.5+j, plotMatrix["F1"][pt][procs[j]][procs[i]]/CMSnum)
+               matHisto.Fill(0.5+j, 0.5+i, plotMatrix["F2"][pt][procs[j]][procs[i]]/CMSnum)
+
 
     xax=matHisto.GetXaxis()
     xax.SetTitle("")
@@ -137,12 +136,12 @@ for pt in ["pt1","pt5"] :
     ROOT.gStyle.SetOptStat(0)
 
     zax=matHisto.GetZaxis()
-    zax.SetRangeUser(1,75)
+    zax.SetRangeUser(0.99,75)
     zax.SetLabelSize(0.02)
 
 
     matHisto.SetTitle("Background Rejection at 60% Signal Efficiency")
-    yax.SetTitle("%s Trainings, %s%s"%(trainingName,ptNames[pt],("" if anaName is None else ", "+anaName)))
+    yax.SetTitle("%s Trainings, %s, %s"%(trainingName,ptNames[pt],treeNames[options.tree]))
     yax.SetTitleOffset(1.2)
 
     matHisto.Draw("COLZ TEXT")
@@ -156,16 +155,15 @@ for pt in ["pt1","pt5"] :
     pt1text=ROOT.TLatex()
     pt1text.SetTextColor(ROOT.kRed)
     pt1text.SetTextAngle(45)
-    pt1text.SetTextSize(0.025)
-    pt1text.DrawLatexNDC(.435,.455,"all par. / tracks")
+    pt1text.SetTextSize(0.03)
+    pt1text.DrawLatexNDC(.435,.446,"F1 / CMS-like")
 
     pt5text=ROOT.TLatex()
     pt5text.SetTextColor(ROOT.kRed)
     pt5text.SetTextAngle(45)
-    pt5text.SetTextSize(0.025)
-    pt5text.DrawLatexNDC(.45,.42,"all par. / tracks+#gamma")
+    pt5text.SetTextSize(0.03)
+    pt5text.DrawLatexNDC(.458,.42,"F2 / CMS-like")
 
-    c.SaveAs("%s/BackgroundRejectionRatios60_%s.pdf"%(options.output,pt))
-    c.SaveAs("%s/BackgroundRejectionRatios60_%s.png"%(options.output,pt))
-    c.SaveAs("%s/BackgroundRejectionRatios60_%s.C"%(options.output,pt))
-
+    c.SaveAs("%s/DetecComp_BackgroundRejectionRatios60_%s_%s_%s.pdf"%(options.output,pt,options.tree,options.training))
+    c.SaveAs("%s/DetecComp_BackgroundRejectionRatios60_%s_%s_%s.png"%(options.output,pt,options.tree,options.training))
+    c.SaveAs("%s/DetecComp_BackgroundRejectionRatios60_%s_%s_%s.C"  %(options.output,pt,options.tree,options.training))

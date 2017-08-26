@@ -47,8 +47,8 @@ plotDir   = './plots';
 
 def condorize(command,tag):
 
-    print "--------------------"
-    print "Processing sample..."
+    #print "--------------------"
+    #print "Processing sample..."
 
     prefix = "o";
     prefixR = "R";
@@ -56,8 +56,7 @@ def condorize(command,tag):
     if options.makeROCs: prefixR = "opR";
 
     # mk eos directory for final ouput
-    if not os.path.exists("/eos/uscms/store/user/%s/%s/"%(user,options.eosDest)):
-        os.makedirs("/eos/uscms/store/user/%s/%s"%(user,options.eosDest));
+    os.system("xrdfs root://cmseos.fnal.gov mkdir -p /store/user/%s/%s"%(user,options.eosDest));
 
     startdir = os.getcwd();
     #change to a tmp dir
@@ -79,7 +78,7 @@ def condorize(command,tag):
     if options.doTraining: f1.write("mkdir weights \n")
     if options.makeROCs:
         f1.write("mkdir plots \n")
-        f1.write("for file in /eos/uscms/%s/o_%s.tar.gz; \n" % (eosweightdir,tag));
+        f1.write("for file in $(xrdfs root://cmseos.fnal.gov ls -u /%s/o_%s.tar.gz); \n" % (eosweightdir,tag));
         f1.write("do \n");
         f1.write("	filebase=${file##*/} \n");
         f1.write("  echo $filebase \n");
@@ -194,7 +193,7 @@ if __name__ == '__main__':
                 command += " --inputs "         + '"'+obsList+'"';
                 command += " --doTraining";
 
-                print command;
+                #print command;
                 label = sig + "_" + bkg+ "_"+ options.treeName;
                 labelbase = sig + "_" + bkg+ "_"+ options.treeName;
                 tag = label.replace(',','_');
@@ -202,7 +201,7 @@ if __name__ == '__main__':
 
                 filestring = "%s/weights_bdtg_%s/TMVAClassification_MVA_bdtg_%s_BDTG.weights.xml" % (weightDir,tagbase,tag);
                 if options.interactive:
-                    print "doing, ", command
+                    #print "doing, ", command
                     os.system(command);
                 else:
                     if not os.path.isfile(filestring) and options.cleaning:
@@ -239,7 +238,7 @@ if __name__ == '__main__':
                 command += " --inputs "    + '"'+obsList+'"';
                 command += " --makeROCs";
 
-                print command;
+                #print command;
                 label = sig + "_" + bkg + "_ROCs";
                 labelbase = sig + "_" + bkg;
                 tag = label.replace(',','_');
@@ -247,7 +246,7 @@ if __name__ == '__main__':
 
                 filestring = "%s/plots_bdtg_%s/RocSummary_%s.txt" % (plotDir,tagbase,tagbase);
                 if options.interactive:
-                    print "interactively: ", command, tagbase
+                    #print "interactively: ", command, tagbase
                     os.system(command);
                 else:
                     if not os.path.isfile(filestring) and options.cleaning:
@@ -258,4 +257,4 @@ if __name__ == '__main__':
                         condorize(command,tagbase);
                     time.sleep(0.1) # delays for 5 seconds
 
-    print "total jobs = ", jobctr;
+    #print "total jobs = ", jobctr;

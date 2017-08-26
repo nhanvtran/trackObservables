@@ -1,8 +1,8 @@
-echo "*****************************************"
-echo "*                                       *"
-echo "* Track Observables Study: Trainings    *"
-echo "*                                       *"
-echo "*****************************************"
+#echo "*****************************************"
+#echo "*                                       *"
+#echo "* Track Observables Study: Trainings    *"
+#echo "*                                       *"
+#echo "*****************************************"
 
 # inputs: postfix sigs(csv) bkgs(csv) vars(csv)
 
@@ -55,7 +55,7 @@ varList=(${4//,/ })
 SIGS=""
 BKGS=""
 VARS=""
-varsToWeight=(j_mass_trim j_mass_mmdt j_mass_prun j_mass_sdb2 j_mass_sdm1)
+varsToWeight=(j_mass_trim j_mass_mmdt j_mass_prun j_mass_sdb2 j_mass_sdm1 j_mass)
 treeList=(t_tragam t_tracks t_allpar)
 
 # fetch signals
@@ -99,18 +99,18 @@ do
     fi
 done
 
-echo ""
-echo "****************************************************"
-echo "* Launching trainings with the following settings: *"
-echo "****************************************************"
-echo " - SIGNALS: ${SIGS}"
-echo " - BACKGROUNDS: ${BKGS}"
-echo " - VARIABLES: ${VARS}"
-echo ""
-echo " - CONDOR OUTPUT DIRECTORY: ./${logdirname}" 
-echo " - EOS    OUTPUT DIRECTORY: /eos/uscms/store/user/${USER}/SubROC/${eosdirname}"
-echo ""
-echo "****************************************************"
+#echo ""
+#echo "****************************************************"
+#echo "* Launching trainings with the following settings: *"
+#echo "****************************************************"
+#echo " - SIGNALS: ${SIGS}"
+#echo " - BACKGROUNDS: ${BKGS}"
+#echo " - VARIABLES: ${VARS}"
+#echo ""
+#echo " - CONDOR OUTPUT DIRECTORY: ./${logdirname}" 
+#echo " - EOS    OUTPUT DIRECTORY: /eos/uscms/store/user/${USER}/SubROC/${eosdirname}"
+#echo ""
+#echo "****************************************************"
 
 # make important directories
 eval `eos root://cmseos.fnal.gov mkdir /store/user/${USER}/SubROC/${eosdirname}`
@@ -126,6 +126,8 @@ mkdir ./${logdirname}/
 # launch jobs
 for tree in ${treeList[*]}
 do
+    echo "Launching jobs for ${eosdirname}, ${tree}, (${SIGS})vs(${BKGS})"
+
     python launchJobs.py -b --doTraining --userOverride ${USER} --tmpDir ${logdirname} \
         --eosDest SubROC/${eosdirname} --treeName ${tree} --sigs ${SIGS} --bkgs ${BKGS} \
         --vars ${VARS} --sampleDir ${indir} --postfix 50k-$1

@@ -68,7 +68,7 @@ if options.lines=="" :
 treeNames = {
             'tracks': 'Tracks',
             'tragam': 'Tracks+#gamma',
-            'allpar': 'All par.'
+            'allpar': 'All particles'
             }
 anaNames={"r0_h0_e0"         : "Perfect" ,
         "r05_h05_e005"       : "HCAL0.05",
@@ -258,7 +258,7 @@ plotsnames = [
         ('j_d2_b2',        "; D_{2}^{#beta=2};",             200, 0, 50.0),
         ('j_multiplicity', "; multiplicity;",                40, 0, 200),
         ('j_mass',         "; mass (GeV);",                  80, 0, 300),
-        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      80, 0, 125),
+        ('j_mass_mmdt',    "; m_{SD}^{#beta=0} (GeV);",      80, 0, 200),
         ('j_mass_sdb2',    "; m_{SD}^{#beta=2} (GeV);",      80, 0, 200),
         ('j_mass_prun',    "; m_{prun} (GeV);",              80, 0, 200),
         ('j_mass_sdm1',    "; m_{SD}^{#beta=1} (GeV);",      80, 0, 200),
@@ -270,10 +270,10 @@ plotsnames = [
         ('j_tau1_b2',      "; #tau_{1}^{#beta=2};",   100, 0, 150),
         ('j_tau2_b2',      "; #tau_{2}^{#beta=2};",   100, 0, 150),
         ('j_tau3_b2',      "; #tau_{3}^{#beta=2};",   100, 0, 150),
-        ('j_tau32_b1',     "; #tau_{32}^{#beta=1};", 80, 0, 1),
-        ('j_tau21_b1',     "; #tau_{21}^{#beta=1};", 80, 0, 1),
-        ('j_tau32_b2',     "; #tau_{32}^{#beta=2};", 80, 0, 1),
-        ('j_tau21_b2',     "; #tau_{21}^{#beta=2};", 80, 0, 1)
+        ('j_tau32_b1',     "; #tau_{32}^{#beta=1};", 50, 0, 1),
+        ('j_tau21_b1',     "; #tau_{21}^{#beta=1};", 50, 0, 1),
+        ('j_tau32_b2',     "; #tau_{32}^{#beta=2};", 50, 0, 1),
+        ('j_tau21_b2',     "; #tau_{21}^{#beta=2};", 50, 0, 1)
 ];
 
 treesToWeight = [
@@ -382,7 +382,8 @@ def declareHistogram(pt,tree,sig,var):
 
 def makeCanvas(hs,legs,name,otherTextMap=[]):
     print "name = ", name;
-    colors = [ROOT.kRed+2,ROOT.kBlue+2,ROOT.kRed,ROOT.kBlue+1,ROOT.kOrange+7,ROOT.kAzure+7] # [1,2,4,6,7,8,9,10,11];
+    colors = [ROOT.kRed+2,ROOT.kRed,ROOT.kOrange+7,ROOT.kBlue+2,ROOT.kBlue+1,ROOT.kAzure+7] # [1,2,4,6,7,8,9,10,11];
+    #colors = [ROOT.kRed+2,ROOT.kBlue+2,ROOT.kRed,ROOT.kBlue+1,ROOT.kOrange+7,ROOT.kAzure+7] # [1,2,4,6,7,8,9,10,11];
     #colors = [ROOT.kRed,ROOT.kOrange+7,ROOT.kBlue+1,ROOT.kAzure+7,ROOT.kGreen+2,ROOT.kGreen] # [1,2,4,6,7,8,9,10,11];
     maxval = -999;
 
@@ -401,7 +402,7 @@ def makeCanvas(hs,legs,name,otherTextMap=[]):
         i+=1;
 
     c = ROOT.TCanvas("c","c",800,800);
-    hs[0].SetMaximum(maxval*1.5);
+    hs[0].SetMaximum(maxval*1.2);
     hs[0].Draw("c hist");
     i = 0;
     for h in hs:

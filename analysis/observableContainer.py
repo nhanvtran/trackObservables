@@ -36,7 +36,7 @@ class observableContainer:
 		self._cutstring = "(";
 		cutctr = 0;
 		for cut in cuts:
-			self._cutstring += "(" + cut[0] + " > " + str(cut[1]) + ") && (" + cut[0] + " < " + str(cut[2]) + ")"
+			self._cutstring += "(" + cut[0] + " >= " + str(cut[1]) + ") && (" + cut[0] + " <= " + str(cut[2]) + ")"
 			if cutctr < len(cuts) - 1: self._cutstring += "&&";
 			cutctr+=1;
 		self._cutstring += ")";

@@ -1,9 +1,9 @@
-#trackObservables
+# trackObservables
 
 
-##installation
+## installation
 
-Trainings need to be run on cmslpc, and you'll need an EOS area to store condor output. Here is the advised setup:
+Trainings will run on cmslpc, and you'll need an EOS area to store condor output. Here is the advised setup:
 
 ```
 $ cd ~/nobackup/
@@ -37,9 +37,26 @@ $ ./configure --fastjet-config=$PWD/../fastjet-install/bin/fastjet-config
 $ make && make check && make install
 ```
 
-###analysis
+## running
 
-Main body of the BDT training. Scripts to configure and launch TMVA.
+Running `sh steerScript.sh` will show a number of commands. In the order used for the Track Observables analysis:
+
+```
+Usage: sh steerScript.sh <TASK> <OPTION>
+  * MAKE      - build processing/anaSubstructure.cpp executable             
+  * JOBS      - launch condor jobs for ntuple generation 
+  * MERGE     - merge outputs from EOS after jobs have finished
+  * PLOT      - plot output from merged jobs 
+  * WWW       - send plots to CERNWEB: <OPTION> changes location
+  * TRAIN     - run BDT trainings (settings inside file)
+  * BDTS_MOVE - move BDT trainings from EOS after jobs have finished
+  * BDTS_PLOT - plot BDT results
+  * BDTS_WWW  - send BDT plots to CERNWEB: <OPTION> changes location
+```
+
+### analysis
+
+The main body of the BDT training. Scripts to configure and launch TMVA.
 
 You can run trainings via **condor** using `launchJobs.py`, for example:
 
@@ -82,13 +99,13 @@ $ root -l -b
 
 To get separation information from BDT trainings (condor only), run `python getSeparationTXT.py` from the directory where you launched the condor jobs. This will output `.txt` files with the desired tables. 
 
-###plotting
+### plotting
 
-Utilities to get formatted control plots from ntuples. Samples available at `/uscms_data/d2/ntran/physics/FCC/trackObservablesStudy/trackObservables/processing/prod-Jun14 `
+Utilities to get formatted control plots from ntuples. 
 
-###processing
+### processing
 
-To run the ntuplizer locally:
+To run the ntuplizer locally, look at `steerScript.sh ANATEST`, or:
 
 ```
 $ cd processing

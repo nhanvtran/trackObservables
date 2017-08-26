@@ -88,6 +88,7 @@ if __name__ == '__main__':
     print(t_bkg.GetEntries())
 
     cuts = [];
+    cuts.append( ["j_passCut",1,1] );
 #	cuts.append( ["HT",500,99999] );
 #	cuts.append( ["MHT",200,99999] );
 #	cuts.append( ["NJets",1,99] );

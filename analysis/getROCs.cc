@@ -7,13 +7,15 @@
 void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     
     // analysis information 
-    std::vector<TString> type = {"t", "W", "Z", "q", "g" };
-    std::vector<TString> trees = { "allpar", "tracks", "tragam" };
-    std::vector<TString> treeNames = { "All particles", "Tracks only", "Tracks+#gamma" };
+    std::vector<TString> type = {"W", "Z", "q", "g", "t"};
+    std::vector<TString> trees = { "tracks", "tragam", "allpar" };
+    std::vector<TString> treeNames = {  "Tracks only", "Tracks+#gamma", "All particles" };
     std::vector<TString> pts = { "pt1", "pt5" };
     std::vector<TString> ptNames = { "p_{T} 1 TeV", "p_{T} 5 TeV" };
-    std::vector<TString> trainings = { "shapesonly", "massonly", "all" };
-    std::vector<TString> trainingsNames = { "Shapes only", "Mass only", "All variables" };
+    std::vector<TString> trainings = { //"shapesonly", "massonly", "all",
+                                       "shapesonlycut", "massonlycut", "allcut" };
+    std::vector<TString> trainingsNames = { //"Shapes only", "Mass only", "All variables", 
+                                            "Shapes only", "Mass only", "All observables" };
     std::map<TString,TString> smearNames = { 
         {"r0_h0_e0",        "Perfect" }, 
         {"r05_h05_e005",    "HCAL0.05"}, 
@@ -44,7 +46,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     // mass-shapes-all x pt for fixed tree, sig/bkg 
     for(size_t i=0; i<trees.size(); i++) {
     for(size_t j=0; j<type.size();  j++) {
-    for(size_t k=0; k<type.size();  k++) {
+    for(size_t k=j+1; k<type.size();  k++) {
         if(j==k) continue;
         TString tree=trees.at(i);
         TString sig = type.at(j);
@@ -70,7 +72,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
         extra = "#splitline{"+sig+" vs. "+bkg+"}{"+extra+"}";
         extraTexts.push_back(extra);
 
-        colorSettings.push_back(trainings.size());
+        colorSettings.push_back(trainings.size()/2);
         settingsMap.push_back(settings);
     }}}
 
@@ -78,7 +80,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     // mass-shapes-all for fixed tree, sig/bkg, pt
     for(size_t i=0; i<trees.size(); i++) {
     for(size_t j=0; j<type.size();  j++) {
-    for(size_t k=0; k<type.size();  k++) {
+    for(size_t k=j+1; k<type.size();  k++) {
         if(j==k) continue;
     for(size_t l=0; l<pts.size();   l++) {
         TString tree=trees.at(i);
@@ -104,7 +106,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
         extra = "#splitline{"+smearName+"}{"+extra+"}";
         extraTexts.push_back(extra);
 
-        colorSettings.push_back(trainings.size());
+        colorSettings.push_back(trainings.size()/2);
         settingsMap.push_back(settings);
     }}}}
 
@@ -112,7 +114,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     // all-tree for fixed training, sig/bkg, pt
     for(size_t i=0; i<trainings.size(); i++) {
     for(size_t j=0; j<type.size();  j++) {
-    for(size_t k=0; k<type.size();  k++) {
+    for(size_t k=j+1; k<type.size();  k++) {
         if(j==k) continue;
     for(size_t l=0; l<pts.size();   l++) {
         TString training=trainings.at(i);
@@ -146,7 +148,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     // all-tree && pt1,pt5 for fixed training, sig/bkg
     for(size_t i=0; i<trainings.size(); i++) {
     for(size_t j=0; j<type.size();  j++) {
-    for(size_t k=0; k<type.size();  k++) {
+    for(size_t k=j+1; k<type.size();  k++) {
         if(j==k) continue;
         TString training=trainings.at(i);
         TString sig = type.at(j);
@@ -162,7 +164,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
                settings.push_back(inputDir+"/"+training+"/MVA_bdtg_"
                                           +sig+sig+"-"+pt+"_"+bkg+bkg
                                           +"-"+pt+"_t_"+tree+".root");
-               settings.push_back(treeNames.at(itree)+", "+ptNames.at(l));
+               settings.push_back(treeNames.at(itree)+(itree==0 ? ", "+ptNames.at(l) : ""));
             }
         }
 
@@ -189,7 +191,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
         
         for(size_t l=0; l<pts.size();   l++) {
             TString pt  = pts.at(l);
-            for(size_t k=0; k<type.size();  k++) {
+            for(size_t k=j+1; k<type.size();  k++) {
                if(j==k) continue;
                TString bkg = type.at(k);
 
@@ -223,7 +225,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
 
         std::vector<TString> settings={};
         
-        for(size_t k=0; k<type.size();  k++) {
+        for(size_t k=j+1; k<type.size();  k++) {
             if(j==k) continue;
             TString bkg = type.at(k);
 
@@ -249,7 +251,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
     for(size_t j=0; j<type.size();  j++) {
     for(size_t itree=0; itree < trees.size(); itree++) {
     for(size_t l=0; l<pts.size();   l++) {
-    for(size_t k=0; k<type.size();  k++) {
+    for(size_t k=j+1; k<type.size();  k++) {
         if(j==k) continue;
         TString tree = trees.at(itree);
         TString sig = type.at(j);
@@ -274,7 +276,7 @@ void getROCs(TString inputDir,TString outDir="./",TString anasub="r0_h0_e0") {
         extra = "#splitline{"+smearName+"}{"+extra+"}";
         extraTexts.push_back(extra);
 
-        colorSettings.push_back(trainings.size()-1);
+        colorSettings.push_back(trainings.size()/2);
         settingsMap.push_back(settings);
     }}}}
 

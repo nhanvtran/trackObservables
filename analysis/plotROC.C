@@ -43,9 +43,10 @@ void plotROC() {
 
 void plotROC(TString filename) {
     TLatex *latex = new TLatex();
-    latex->SetTextSize(0.04);
+    latex->SetTextSize(0.06);
     latex->DrawLatexNDC(0.725,0.25,extraText);
 
+    leg->SetTextSize(0.05);
     leg->Draw();
     cROC->Print(outputDir+"roc_"+filename+".png");
     cROC->Print(outputDir+"roc_"+filename+".pdf");
@@ -106,8 +107,8 @@ void plotROC(TString input, TString label, Args... moreLabels) {
 
         MVA_BDTG_effBvsS->GetXaxis()->SetTitle("Signal efficiency");
         MVA_BDTG_effBvsS->GetYaxis()->SetTitle("Background efficiency");
-        MVA_BDTG_effBvsS->GetXaxis()->SetTitleSize(0.04);
-        MVA_BDTG_effBvsS->GetYaxis()->SetTitleSize(0.04);
+        MVA_BDTG_effBvsS->GetXaxis()->SetTitleSize(0.06);
+        MVA_BDTG_effBvsS->GetYaxis()->SetTitleSize(0.06);
         MVA_BDTG_effBvsS->GetXaxis()->SetTitleOffset(1.05);
         MVA_BDTG_effBvsS->GetYaxis()->SetTitleOffset(1.2);
         MVA_BDTG_effBvsS->GetXaxis()->SetLabelSize(0.03);
@@ -127,7 +128,7 @@ void plotROC(TString input, TString label, Args... moreLabels) {
         TH1F* MVA_BDTG_effBvsS = (TH1F *) file->Get("Method_BDT/BDTG/MVA_BDTG_effBvsS");
         MVA_BDTG_effBvsS->SetLineColor(colors.at(iColor)+0*sColor);
         if(dotted) { 
-            MVA_BDTG_effBvsS->SetLineStyle(kDotted); 
+            MVA_BDTG_effBvsS->SetLineStyle(kDashed); 
             MVA_BDTG_effBvsS->SetMarkerStyle(kDot); 
             MVA_BDTG_effBvsS->SetMarkerSize(4); 
         } else { 
