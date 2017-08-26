@@ -10,11 +10,11 @@ import time
 import ROOT
 
 def makeCanvas(hists, names, canname, odir, normalize=False,setLogy=False):
-	
+
 	#bin = options.ptbin;
 	#directory = "figs_bin"+str(bin);
 	colors = [2,4,1,6,7];
-	
+
 	leg = ROOT.TLegend(0.4,0.7,0.6,0.9);
 	leg.SetBorderSize(0);
 	leg.SetFillStyle(0);
@@ -30,8 +30,8 @@ def makeCanvas(hists, names, canname, odir, normalize=False,setLogy=False):
 
 	can = ROOT.TCanvas("can"+canname,"can"+canname,1000,800);
 	hists[0].SetMaximum( 1.2*max );
-	hists[0].SetMinimum( 1e-5 );    
-	hists[0].Draw();    
+	hists[0].SetMinimum( 1e-5 );
+	hists[0].Draw();
 	for i in range(1,len(hists)):
 		hists[i].Draw("sames");
 	leg.Draw();

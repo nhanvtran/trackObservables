@@ -11,7 +11,7 @@ $ mkdir Substructure-ROC
 $ cd Substructure-ROC
 $ cmsrel CMSSW_7_2_0
 $ git clone https://github.com/nhanvtran/trackObservables.git
-$ mkdir /eos/uscms/store/user/${USER}/SubROC/training/weights
+$ xrdfs root://cmseos.fnal.gov mkdir /store/user/${USER}/SubROC/training/weights
 ```
 
 For generation of ntuples, you need to install FastJet and FastJet/contrib. Place the installation in `processing` as follows:

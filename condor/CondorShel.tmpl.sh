@@ -15,5 +15,5 @@ cd ${_CONDOR_SCRATCH_DIR}
 
 chmod 777 anaSubstructure
 ./anaSubstructure FILE ./ MINEV MAXEV CFG TAG
-xrdcp processed-FILE-TAG.root root://cmseos.fnal.gov:///store/user/ecoleman/OUTDIRFOLD/
+xrdcp processed-FILE-TAG.root root://cmseos.fnal.gov:///store/user/USER/OUTDIRFOLD/
 rm *.lhe *.root *.pu14.gz anaSubstructure 

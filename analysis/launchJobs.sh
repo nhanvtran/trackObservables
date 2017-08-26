@@ -47,7 +47,7 @@ logdirname=trainings_${1}_$5
 ################################################################################
 
 # setup
-indir=/uscms_data/d3/ecoleman/TrackObservablesStudy/samples/
+indir=/uscms_data/d3/${USER}/TrackObservablesStudy/samples/
 sigList=(${2//,/ })
 bkgList=(${3//,/ })
 varList=(${4//,/ })

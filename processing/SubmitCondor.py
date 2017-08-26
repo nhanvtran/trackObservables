@@ -59,6 +59,7 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'MAXEV'       in line: line = line.replace('MAXEV',       maxEv)
         if 'TAG'         in line: line = line.replace('TAG',         "%i"%j)
         if 'CFG'         in line: line = line.replace('CFG',         options.cfg)
+        if 'USER'        in line: line = line.replace('USER',        os.environ["USER"])
 
         current_conf.write(line)
 
@@ -79,6 +80,7 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'MAXEV'       in line: line = line.replace('MAXEV',       "%i"%maxEv)
         if 'TAG'         in line: line = line.replace('TAG',         "%i"%j)
         if 'CFG'         in line: line = line.replace('CFG',         options.cfg)
+        if 'USER'        in line: line = line.replace('USER',        os.environ["USER"])
 
         current_shel.write(line)
 
