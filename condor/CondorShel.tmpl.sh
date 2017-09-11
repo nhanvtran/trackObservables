@@ -9,10 +9,16 @@ eval `scramv1 runtime -csh`
 rehash
 
 xrdcp ANASUBLOC ${_CONDOR_SCRATCH_DIR}/anaSubstructure
-xrdcp INDIR/FILE.lhe ${_CONDOR_SCRATCH_DIR}/
+xrdcp INDIR/FILE.dat ${_CONDOR_SCRATCH_DIR}/
 cd ${_CONDOR_SCRATCH_DIR}
+echo `grep 'HepMC' FILE.dat | wc` 
+
+echo 'here'
+
+setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/uscms_data/d3/cvernier/TrackObservables/pheno/trackObservables/processing/2.06.09/lib
 
 chmod 777 anaSubstructure
-./anaSubstructure FILE ./ MINEV MAXEV TAG
-xrdcp processed-FILE-TAG.root root://cmseos.fnal.gov:///store/user/ecoleman/OUTDIRFOLD/
-rm *.lhe *.root anaSubstructure 
+./anaSubstructure FILE.dat ./ 0 100000 CFG 
+ls
+xrdcp processed-FILE.dat-CFG.root root://cmseos.fnal.gov:///store/user/cvernier/OUTDIRFOLD/
+rm *.dat *.root anaSubstructure 
