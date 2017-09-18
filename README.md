@@ -35,6 +35,16 @@ $ scripts/update-contribs.sh
 $ scripts/update-contribs.sh EnergyCorrelator 1.2.0-rc1
 $ ./configure --fastjet-config=$PWD/../fastjet-install/bin/fastjet-config
 $ make && make check && make install
+
+For HepMC:
+$ cd processing/
+$ mkdir HepMC
+$ cd HepMC
+$ curl -O http://lcgapp.cern.ch/project/simu/HepMC/download/HepMC-2.06.09.tar.gz
+$ tar zxvf HepMC-2.06.09.tar.gz
+$ cd HepMC-2.06.09/
+$ ./configure --prefix=$PWD/../HepMC-install --with-momentum=GEV --with-length=CM
+$ make && make check && make install
 ```
 
 ###analysis

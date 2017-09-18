@@ -208,7 +208,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
 
 // smearing functions
 TRandom3 *smearDist;
-void smearJetPt(fastjet::PseudoJet &jet);
+void smearJetPt(fastjet::PseudoJet &jet, Double_t shiftChargedScale, Double_t shiftPhotonScale, Double_t shiftHadronScale);
 std::vector<fastjet::PseudoJet> discretizeJet(fastjet::PseudoJet jet, bool clusterJet = false);
 std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> &particles, bool discretizeEcal=false, Double_t numberOfPileup=0, Double_t maxChargedPt=1e10, Double_t maxChargedDr=1e10, Double_t trackingEfficiency=1.0);
 
@@ -216,7 +216,7 @@ std::vector<fastjet::PseudoJet> discretizeEvent(std::vector<fastjet::PseudoJet> 
 
 int main (int argc, char **argv) {
     
-    std::string type  = argv[1];   // type "gg" or "qq"
+    std::string type  = argv[1];   // input filename
     std::string indir = argv[2];   // where to find input files 
     int min = atoi(argv[3]);      // events to run over
     int max = atoi(argv[4]);      // events to run over
@@ -243,7 +243,7 @@ int main (int argc, char **argv) {
     declareBranches(t_tragam);
     declareBranches(t_allpar);
 
-    static Double_t numberOfPileup=findOption("p",tag);;
+    static Double_t numberOfPileup=findOption("p",tag);
   
     std::vector<string> pufiles;
     pufiles.push_back("program");
@@ -287,10 +287,16 @@ int main (int argc, char **argv) {
       
       // per event
       particles.clear();
+      bool onlyWplus = (tag.find("W+")!=std::string::npos);
+      bool onlyWminus = (tag.find("W-")!=std::string::npos);
+      bool containsWplus=false;
+      bool containsWminus=false;
       if(isLHE) { //Read an LHE file
-	// std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
+	//std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
 	for (unsigned int i = 0 ; i < reader->hepeup.IDUP.size(); ++i){
-	  
+          if(reader->hepeup.IDUP.at(i)==24) containsWplus=true;
+          if(reader->hepeup.IDUP.at(i)==-24) containsWminus=true;
+	  //std::cout << reader->hepeup.IDUP.at(i) << " -- " << reader->hepeup.PUP.at(i).at(3) << " -- " << reader->hepeup.ISTUP.at(i) << std::endl;
 	  if (reader->hepeup.ISTUP.at(i) == 1){
 	    float px = reader->hepeup.PUP.at(i).at(0);
 	    float py = reader->hepeup.PUP.at(i).at(1);
@@ -306,8 +312,10 @@ int main (int argc, char **argv) {
         } 
       } else { //Read a HepMC file
 	for ( HepMC::GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p ){
-	  if(abs((*p)->status()) != 1) continue;
+          if((*p)->pdg_id()==24) containsWplus=true;
+          if((*p)->pdg_id()==-24) containsWminus=true;
 	  //std::cout << (*p)->pdg_id() << " -- " << (*p)->momentum().perp() << " -- " << (*p)->status() << std::endl;
+	  if(abs((*p)->status()) != 1) continue;
 	  float px = (*p)->momentum().px();
 	  float py = (*p)->momentum().py();
 	  float pz = (*p)->momentum().pz();
@@ -315,9 +323,14 @@ int main (int argc, char **argv) {
 	  fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
 	  int pdgid = (*p)->pdg_id();
 	  curpar.set_user_index( pdgid );
+	  curpar.set_user_info(new PU14(pdgid,-1,-1));
 	  particles.push_back( curpar );
 	}    
       }
+      //std::cerr << containsWplus << std::endl;
+      if((onlyWplus)&&(!containsWplus)) continue;
+      if((onlyWminus)&&(!containsWminus)) continue;
+
       if (numberOfPileup>0) {
 	if (!mixer->next_event()) { // when running out of PU events start from the beginning
 	  delete mixer;
@@ -351,9 +364,12 @@ int main (int argc, char **argv) {
         if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,nPU, maxChargedPt, maxChargedDr, trackingEfficiency);
         else newparticles = particles;
         // smear particle momenta
+        static Double_t shiftChargedScale=findOption("CS",tag);
+        static Double_t shiftPhotonScale=findOption("PS",tag);
+        static Double_t shiftHadronScale=findOption("HS",tag);
         if (tag.find("r")!=std::string::npos)
           for (unsigned int i = 0; i < newparticles.size(); ++i)
-            smearJetPt(newparticles[i]);
+            smearJetPt(newparticles[i],shiftChargedScale,shiftPhotonScale,shiftHadronScale);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
 	if(isLHE) { 
@@ -856,9 +872,10 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
 }
 
 // ----------------------------------------------------------------------------------
-void smearJetPt(fastjet::PseudoJet &jet) {
+void smearJetPt(fastjet::PseudoJet &jet, Double_t shiftChargedScale, Double_t shiftPhotonScale, Double_t shiftHadronScale) {
 
     Double_t energyResolution=0;
+    Double_t energyScale=1.;
     for(auto& it: ids) { 
         std::vector<int> tidSet = it.second;
 
@@ -866,19 +883,23 @@ void smearJetPt(fastjet::PseudoJet &jet) {
             if(it.first=="c") {                                    // -------------- charged hadron resolution
                 //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
                 energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                if (shiftChargedScale>0) energyScale=shiftChargedScale;
             } else if (it.first=="p") {                              // ---------------------- photon resolution
                 //energyResolution=sqrt(pow(0.027/sqrt(jet.e()),2)+pow(0.15/jet.e(),2)+pow(0.005,2)); // CMS TDR
                 //energyResolution=sqrt(pow(0.027/sqrt(1.6*jet.e()),2)+pow(0.15/1.6/jet.e(),2)+pow(1.6*0.005,2)); // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
                 energyResolution=sqrt(pow(0.027/sqrt(jet.e()/1.6),2)+pow(0.15/jet.e()*1.6,2)+pow(0.005,2)); // CMS TDR + factor 1.6=1+0.6 for the fact that 60% charged hadrons (leaving 30% in ECAL) are substracted before 30% photons are reconstructed
                 //energyResolution=sqrt(pow(0.042/jet.e(),2)+pow(0.1/sqrt(jet.e()),2)+pow(0.005,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                if (shiftPhotonScale>0) energyScale=shiftPhotonScale;
             } else if (it.first=="n") {                              // -------------- neutral hadron resolution
                 //energyResolution=sqrt(pow(1.20/sqrt(jet.e()),2)+pow(0.05,2)); // CMS JET JINST
 		//energyResolution=sqrt(pow(1.20/sqrt(7.*jet.e()),2)+pow(7.*0.05,2)); // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
                 energyResolution=sqrt(pow(1.20/sqrt(jet.e()/7.),2)+pow(0.05,2)); // CMS JET JINST + factor 7=1+6 for the fact that 60% charged hadrons are substracted before 10% neutral hadrons are reconstructed
-                //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b742cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                //energyResolution=sqrt(pow(0.41/jet.e(),2)+pow(0.52/sqrt(jet.e()),2)+pow(0.25,2)); // CMS tuning https://github.com/cms-met/cmssw/blob/b7T42cc16aff1915b275cf0847dcff93aa6deab14/RecoMET/METProducers/python/METSigParams_cfi.py#L37
+                if (shiftHadronScale>0) energyScale=shiftHadronScale;
             } else if (it.first=="l") {                              // ---------------------- lepton resolution
                 //energyResolution=sqrt(pow(0.0001*jet.pt(),2)+pow(0.005,2)); // CMS TDR
                 energyResolution=sqrt(pow(0.00025*jet.pt(),2)+pow(0.015,2)); // Delphes CMS tuning https://github.com/sethzenz/Delphes/blob/master/Cards/CMS_Phase_I_NoPileUp.tcl#L159
+                if (shiftChargedScale>0) energyScale=shiftChargedScale;
             } else {                                                // ------------------------ everything else
                 std::cout << "WARNING: Input jet has unlisted PDG ID!" << std:: endl;
                 energyResolution=0; // assume perfect resolution for everything else (?)
@@ -892,6 +913,7 @@ void smearJetPt(fastjet::PseudoJet &jet) {
     Double_t smearedPt = std::max(1e-10,smearDist->Gaus(1,energyResolution*resFudgeFactor));
 
     if (nosmear) smearedPt = 1.;
+    smearedPt*=energyScale;
 
     jet.reset_momentum(jet.px() * smearedPt,
                        jet.py() * smearedPt,
