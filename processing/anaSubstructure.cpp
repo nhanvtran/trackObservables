@@ -290,7 +290,7 @@ int main (int argc, char **argv) {
       if (evtCtr < min) continue;
       if (evtCtr > max) break;
       
-      if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
+      if (evtCtr % 1000 == 0) std::cout << "event " << evtCtr << "\n";
       
       // per event
       hfparticles.clear();
@@ -343,8 +343,6 @@ int main (int argc, char **argv) {
 	  }
       	}
       }
-      if((onlyWplus)&&(!containsWplus)) continue;
-      if((onlyWminus)&&(!containsWminus)) continue;
       if (numberOfPileup>0) {
 	if (!mixer->next_event()) { // when running out of PU events start from the beginning
 	  delete mixer;
@@ -368,7 +366,8 @@ int main (int argc, char **argv) {
 	}
       }
       	
-        // discretize neutral hadrons
+      if(((!onlyWplus)||(containsWplus))&&((!onlyWminus)||(containsWminus))) {
+              // discretize neutral hadrons
         bool discretize = (tag.find("h")!=std::string::npos);
         static Double_t nPU=numberOfPileup*(tag.find("q")!=std::string::npos);
         static bool discretizeEcal=(tag.find("e")!=std::string::npos);
@@ -386,6 +385,8 @@ int main (int argc, char **argv) {
             smearJetPt(newparticles[i],shiftChargedScale,shiftPhotonScale,shiftHadronScale);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar, hfparticles );        
+       }
+
 	if(isLHE) { 
 	  nextEvent = reader->readEvent();
 	}
