@@ -104,6 +104,8 @@ int evtCtr;
 float RPARAM;
 
 int njets;
+std::vector<int> j_nbHadrons;
+std::vector<int> j_ncHadrons;
 std::vector<float> j_ptfrac;
 std::vector<float> j_pt;
 std::vector<float> j_eta;
@@ -189,22 +191,26 @@ std::map< TString,std::vector<int> > ids {
     { "c" , {211,-211,321,-321,2212,-2212,3112,-3112,3222,-3222,3312,-3312} },
     { "p" , {22,111}                                                        },
     { "n" , {3122,-3122,130,310,2112,-2112,3322,-3322}                      },
-    { "l" , {-11,11,-13,13,-15,15}                                          }
+    { "l" , {-11,11,-13,13,-15,15}                                          },
+    { "b" , {511,-511,521,-521,531,-531,541,-541,10513,-10513,10523,-10523,10533,-10533,10543,-10543,20513,-20513,20523,-20523,20533,-20533,20543,-20543,5122,-5122,5132,5112,-5112,5114,-5114,-5132,5142,-5142,5212,-5212,5214,-5214,5222,-5222,5224,-5224,5232,-5232,5242,-5242,5312,-5312,5314,-5314,5322,-5322,5324,-5324,5332,-5332,5334,-5334,5342,-5342,5412,-5412,5414,-5414,5422,-5422,5424,-5424,5432,-5432,5434,-5434,5442,-5442,5444,-5444,5512,-5512,5514,-5514,5522,-5522,5524,-5524,5532,-5532,5534,-5534,5542,-5542,5544,-5544,5554,-5554,513,-513}},
+    { "chad", {411,-411,10411,-10411,10413,-10413,20413,-20413,421,-421,10421,-10421,10423,-10423,20423,-20423,431,-431,10433,-10433,20433,-20433,4122,-4122,4112,-4112,4212,-4212,4222,-4222,4114,-4114,4214,-4214,4224,-4224,4232,-4232,4132,-4132,4322,-4322,4312,-4312,4324,-4324,4314,-4314,4332,-4332,4334,-4334,4412,-4412,4422,-4422,4414,-4414,4424,-4424,4432,-4432,4434,-4434,4444,-4444}}
 };
 
 std::vector<int> c_ids = ids["c"];
 std::vector<int> p_ids = ids["p"]; 
 std::vector<int> n_ids = ids["n"]; 
 std::vector<int> l_ids = ids["l"]; 
+std::vector<int> b_ids = ids["b"];
+std::vector<int> chad_ids = ids["chad"];
 
 int activeAreaRepeats = 1;
 double ghostArea = 0.01;
 double ghostEtaMax = 7.0;
     
-void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar);
+void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar, std::vector < fastjet::PseudoJet > HFparticles);
 void declareBranches(TTree* t);
 void clearVectors();
-void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag);
+void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std::vector < fastjet::PseudoJet > HFparticles);
 
 // smearing functions
 TRandom3 *smearDist;
@@ -262,6 +268,7 @@ int main (int argc, char **argv) {
     fECF = new EnergyCorrelations();
     // evtCtr = 0;
     std::vector < fastjet::PseudoJet > particles;
+    std::vector < fastjet::PseudoJet > hfparticles;
     std::vector < fastjet::PseudoJet > newparticles;
     // loop over events
     bool nextEvent = true;
@@ -286,6 +293,7 @@ int main (int argc, char **argv) {
       if (evtCtr % 100 == 0) std::cout << "event " << evtCtr << "\n";
       
       // per event
+      hfparticles.clear();
       particles.clear();
       bool onlyWplus = (tag.find("W+")!=std::string::npos);
       bool onlyWminus = (tag.find("W-")!=std::string::npos);
@@ -297,7 +305,7 @@ int main (int argc, char **argv) {
           if(reader->hepeup.IDUP.at(i)==24) containsWplus=true;
           if(reader->hepeup.IDUP.at(i)==-24) containsWminus=true;
 	  //std::cout << reader->hepeup.IDUP.at(i) << " -- " << reader->hepeup.PUP.at(i).at(3) << " -- " << reader->hepeup.ISTUP.at(i) << std::endl;
-	  if (reader->hepeup.ISTUP.at(i) == 1){
+	  if((reader->hepeup.ISTUP.at(i) == 1) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=14) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=16) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=18)){
 	    float px = reader->hepeup.PUP.at(i).at(0);
 	    float py = reader->hepeup.PUP.at(i).at(1);
 	    float pz = reader->hepeup.PUP.at(i).at(2);
@@ -315,22 +323,28 @@ int main (int argc, char **argv) {
           if((*p)->pdg_id()==24) containsWplus=true;
           if((*p)->pdg_id()==-24) containsWminus=true;
 	  //std::cout << (*p)->pdg_id() << " -- " << (*p)->momentum().perp() << " -- " << (*p)->status() << std::endl;
-	  if(abs((*p)->status()) != 1) continue;
 	  float px = (*p)->momentum().px();
 	  float py = (*p)->momentum().py();
 	  float pz = (*p)->momentum().pz();
 	  float e  = (*p)->momentum().e();
 	  fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
 	  int pdgid = (*p)->pdg_id();
-	  curpar.set_user_index( pdgid );
-	  curpar.set_user_info(new PU14(pdgid,-1,-1));
-	  particles.push_back( curpar );
-	}    
+	  if(TMath::Abs(pdgid) != 14 && TMath::Abs(pdgid) != 16 && TMath::Abs(pdgid) != 18 ){
+ 		curpar.set_user_index( pdgid );
+		curpar.set_user_info(new PU14(pdgid,-1,-1));
+		if (std::find(b_ids.begin(), b_ids.end(), curpar.user_index()) != b_ids.end()) {
+		//if(abs((*p)->status())<=2)
+			 hfparticles.push_back( curpar );
+                	}
+          	if (std::find(chad_ids.begin(), chad_ids.end(), curpar.user_index()) != chad_ids.end()) {
+			if(abs((*p)->status())<=2) hfparticles.push_back( curpar );
+                	}
+	  	if(abs((*p)->status())==1) particles.push_back( curpar );
+	  }
+      	}
       }
-      //std::cerr << containsWplus << std::endl;
       if((onlyWplus)&&(!containsWplus)) continue;
       if((onlyWminus)&&(!containsWminus)) continue;
-
       if (numberOfPileup>0) {
 	if (!mixer->next_event()) { // when running out of PU events start from the beginning
 	  delete mixer;
@@ -371,7 +385,7 @@ int main (int argc, char **argv) {
           for (unsigned int i = 0; i < newparticles.size(); ++i)
             smearJetPt(newparticles[i],shiftChargedScale,shiftPhotonScale,shiftHadronScale);
         // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
-        analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
+        analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar, hfparticles );        
 	if(isLHE) { 
 	  nextEvent = reader->readEvent();
 	}
@@ -393,7 +407,7 @@ int main (int argc, char **argv) {
     return 0 ;
 }
 
-void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar){
+void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks, TTree* t_tragam, TTree* t_allpar, std::vector < fastjet::PseudoJet > HFparticles){
     
     // recluster on the fly....
     fastjet::JetDefinition   jetDef(fastjet::antikt_algorithm, RPARAM);    
@@ -410,13 +424,13 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
 
     // All Particles Looop
     for (unsigned int i = 0; i < out_jets.size(); i++){
-        PushBackJetInformation(out_jets[i],0);
+        PushBackJetInformation(out_jets[i],0,HFparticles);
     }
     t_allpar->Fill();
     clearVectors();
 
     for (unsigned int i = 0; i < out_jets.size(); i++){
-        PushBackJetInformation(out_jets[i],1);
+        PushBackJetInformation(out_jets[i],1,HFparticles);
     }
     t_tracks->Fill();
     clearVectors();
@@ -424,7 +438,7 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
     // std::cout << "tracks" << std::endl;
 
     for (unsigned int i = 0; i < out_jets.size(); i++){
-        PushBackJetInformation(out_jets[i],2);
+        PushBackJetInformation(out_jets[i],2,HFparticles);
     }
     t_tragam->Fill();
     clearVectors();
@@ -444,6 +458,8 @@ void declareBranches( TTree* t ){
 
     t->Branch("njets"            , &njets            );
     t->Branch("j_ptfrac"         , &j_ptfrac         );
+    t->Branch("j_nbHadrons"	 , &j_nbHadrons      );
+    t->Branch("j_ncHadrons"      , &j_ncHadrons      );
     t->Branch("j_pt"             , &j_pt             );
     t->Branch("j_eta"            , &j_eta            );
     t->Branch("j_mass"           , &j_mass           );
@@ -521,6 +537,8 @@ void declareBranches( TTree* t ){
 void clearVectors(){
     j_pt.clear();
     j_ptfrac.clear();
+    j_nbHadrons.clear();
+    j_ncHadrons.clear();
     j_eta.clear();
     j_mass.clear();
     j_tau1_b1.clear();
@@ -590,7 +608,7 @@ void clearVectors(){
 }
 
 // ----------------------------------------------------------------------------------
-void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
+void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std::vector < fastjet::PseudoJet > HFparticles){
 
     // for reclustering on the fly....
     fastjet::JetDefinition jetDef(fastjet::antikt_algorithm, RPARAM);    
@@ -600,6 +618,8 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
     // std::cout << "old jet pt = " << jet.pt() << ", and particle content flag = " << particleContentFlag << std::endl;
 
     fastjet::PseudoJet curjet;  
+    int nbHadrons =0;
+    int ncHadrons=0;
     std::vector< fastjet::PseudoJet > newparticles;
     bool jet_has_no_particles = false;
     if (particleContentFlag == 0) { 
@@ -614,7 +634,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
         
         // make a new set of particles
         for (int j = 0; j < discretePar.size(); j++){
-            // std::cout << "pdg ids = " << jet.constituents().at(j).user_index() << std::endl;
+             //std::cout << "pdg ids = " << jet.constituents().at(j).user_index() << std::endl;
             if (std::find(c_ids.begin(), c_ids.end(), discretePar.at(j).user_index()) != c_ids.end()) {
                 newparticles.push_back(discretePar.at(j));
             }
@@ -644,7 +664,18 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag){
             jet_has_no_particles = true;
         }
     }
-
+    for (unsigned int j = 0; j < HFparticles.size(); j++){
+	if(deltaR(HFparticles[j].eta(),HFparticles[j].phi(),curjet.eta(),curjet.phi())<(RPARAM-0.1*RPARAM)){
+		//std::cout<<nbHadrons<< "   "<<ncHadrons<<"  "<<deltaR(HFparticles[j].eta(),HFparticles[j].phi(),curjet.eta(),curjet.phi())<<"  "<<HFparticles[j].user_index()<<std::endl;
+		if(abs(HFparticles[j].user_index())/100==4 || (abs(HFparticles[j].user_index())-10000)/100==4 || (abs(HFparticles[j].user_index())-20000)/100==4) ncHadrons++;
+		else if (abs(HFparticles[j].user_index())/100==5 || (abs(HFparticles[j].user_index())-10000)/100==5 || (abs(HFparticles[j].user_index())-20000)/100==5 || abs(HFparticles[j].user_index())/1000==5) nbHadrons++;
+//		else std::cout<< HFparticles[j].user_index()<<std::endl;
+	    }	
+	
+	}
+    //std::cout<<nbHadrons<< "   "<<ncHadrons<<std::endl;
+    j_nbHadrons.push_back(nbHadrons);
+    j_ncHadrons.push_back(ncHadrons);
     // groomers/taggers
     fastjet::Pruner pruner1( fastjet::cambridge_algorithm, 0.1, 0.5 );
     fastjet::Filter trimmer1( fastjet::Filter(fastjet::JetDefinition(fastjet::kt_algorithm, 0.2), fastjet::SelectorPtFractionMin(0.03)) );
