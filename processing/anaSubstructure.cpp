@@ -29,6 +29,7 @@
 #include "fastjet/contrib/ModifiedMassDropTagger.hh"
 #include "fastjet/contrib/SoftDrop.hh"
 #include "fastjet/contrib/DistanceMeasure.hh"
+#include "RecursiveSoftDrop.hh"
 
 #include "EnergyCorrelations.hh"
 #include "CmdLine.hh"
@@ -170,6 +171,7 @@ std::vector<float> j_m3_b2_mmdt;
 std::vector<float> j_qjetVol;
 std::vector<float> j_mass_trim;
 std::vector<float> j_mass_mmdt;
+std::vector<float> j_mass_rsd;
 std::vector<float> j_mass_prun;
 std::vector<float> j_mass_sdb2;
 std::vector<float> j_mass_sdm1;
@@ -527,6 +529,7 @@ void declareBranches( TTree* t ){
 
     t->Branch("j_mass_trim"      , &j_mass_trim      );
     t->Branch("j_mass_mmdt"      , &j_mass_mmdt      );
+    t->Branch("j_mass_rsd"       , &j_mass_rsd      );
     t->Branch("j_mass_prun"      , &j_mass_prun      );
     t->Branch("j_mass_sdb2"      , &j_mass_sdb2      );
     t->Branch("j_mass_sdm1"      , &j_mass_sdm1      );
@@ -602,6 +605,7 @@ void clearVectors(){
     j_qjetVol.clear();
     j_mass_trim.clear();
     j_mass_mmdt.clear();
+    j_mass_rsd.clear();
     j_mass_prun.clear();
     j_mass_sdb2.clear();
     j_mass_sdm1.clear();
@@ -687,6 +691,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std
     fastjet::contrib::SoftDrop soft_drop_mmdt(0.0, zcut_sd, mu_sd);
     fastjet::contrib::SoftDrop soft_drop_sdb2(2.0, zcut_sd, mu_sd);
     fastjet::contrib::SoftDrop soft_drop_sdm1(-1.0, zcut_sd, mu_sd);
+    fastjet::RecursiveSoftDrop soft_drop_rsd(0.0, zcut_sd, RPARAM);
     
     // n-subjettiness    
     double beta = 1;      // power for angular dependence, e.g. beta = 1 --> linear k-means, beta = 2 --> quadratic/classic k-means
@@ -782,6 +787,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std
 	
         // Groomed variables
         fastjet::PseudoJet mmdtjet=soft_drop_mmdt(curjet);
+        fastjet::PseudoJet rsdjet=soft_drop_rsd(curjet);
 
         j_tau1_b1_mmdt.push_back(  nSub1KT_b1(mmdtjet) );        
         j_tau2_b1_mmdt.push_back(  nSub2KT_b1(mmdtjet) );        
@@ -823,6 +829,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std
         j_mass_trim.push_back( trimmer1( curjet ).m() );
         j_mass_prun.push_back( pruner1( curjet ).m() );    
         j_mass_mmdt.push_back( mmdtjet.m() );
+        j_mass_rsd.push_back( rsdjet.m() );
         j_mass_sdb2.push_back( soft_drop_sdb2( curjet ).m() );
         j_mass_sdm1.push_back( soft_drop_sdm1( curjet ).m() );
         
@@ -895,6 +902,7 @@ void PushBackJetInformation(fastjet::PseudoJet jet, int particleContentFlag, std
         j_mass_trim.push_back( -99 );
         j_mass_prun.push_back( -99 );
         j_mass_mmdt.push_back( -99 );
+        j_mass_rsd.push_back( -99 );
         j_mass_sdb2.push_back( -99 );
         j_mass_sdm1.push_back( -99 );
         
