@@ -235,6 +235,7 @@ int main (int argc, char **argv) {
 
     char inName[192];
     bool isLHE = type.find("lhe") != std::string::npos;
+    bool isROOT = type.find("root") != std::string::npos;
     sprintf( inName, "%s/%s",indir.c_str(),type.c_str() );
     // sprintf( inName, "/uscms_data/d3/ecoleman/TrackObservablesStudy/trackObservables/processing/pythia82-lhc13-WW-pt1-50k-2.lhe" );
     std::cout << "fname = " << inName << std::endl;
@@ -272,131 +273,222 @@ int main (int argc, char **argv) {
     std::vector < fastjet::PseudoJet > particles;
     std::vector < fastjet::PseudoJet > hfparticles;
     std::vector < fastjet::PseudoJet > newparticles;
+    std::vector < fastjet::PseudoJet > neutrinos;
+
     // loop over events
     bool nextEvent = true;
+
     LHEF::Reader *reader;
     if(isLHE) { 
       reader = new LHEF::Reader(ifsbkg); 
       nextEvent = reader->readEvent();
     }
+
     HepMC::GenEvent* evt;
     HepMC::IO_GenEvent *hepmcreader;
-    if(!isLHE) {
+    if(!isLHE && !isROOT) {
       hepmcreader = new HepMC::IO_GenEvent(inName,std::ios::in);
       evt = hepmcreader->read_next_event();
       nextEvent = (evt != 0);
     }
+
+    TFile *fin;
+    TTree *tin;
+    const Int_t kMaxEvent = 1;
+    const Int_t kMaxGenParticle = 9994;
+    Int_t           Event_;
+    UInt_t          Event_fUniqueID[kMaxEvent];   //[Event_]
+    UInt_t          Event_fBits[kMaxEvent];   //[Event_]
+    Long64_t        Event_Number[kMaxEvent];   //[Event_]
+    Int_t           Event_size;    
+    Int_t           GenParticle_;
+    UInt_t          GenParticle_fUniqueID[kMaxGenParticle];   //[GenParticle_]
+    UInt_t          GenParticle_fBits[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_PID[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_Status[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_E[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Px[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Py[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_Pz[kMaxGenParticle];   //[GenParticle_]
+    Double_t        GenParticle_PT[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_M1[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_M2[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_D1[kMaxGenParticle];   //[GenParticle_]
+    Int_t           GenParticle_D2[kMaxGenParticle];   //[GenParticle_]
+
+    if(isROOT){
+        fin = new TFile(inName,"READ");     // Open root input file from madgraph+pythia
+        tin = (TTree*)fin->Get("STDHEP");    // Get tree from root file
+        tin->SetMakeClass(1); // Necessary here !!!
+        tin->SetBranchAddress("Event",                &Event_);
+        tin->SetBranchAddress("Event.fUniqueID",       Event_fUniqueID);
+        tin->SetBranchAddress("Event.fBits",           Event_fBits);
+        tin->SetBranchAddress("Event.Number",          Event_Number);
+        tin->SetBranchAddress("Event_size",           &Event_size);
+        tin->SetBranchAddress("GenParticle",          &GenParticle_);
+        tin->SetBranchAddress("GenParticle.fUniqueID", GenParticle_fUniqueID);
+        tin->SetBranchAddress("GenParticle.fBits",     GenParticle_fBits);
+        tin->SetBranchAddress("GenParticle.PID",       GenParticle_PID);
+        tin->SetBranchAddress("GenParticle.Status",    GenParticle_Status);
+        tin->SetBranchAddress("GenParticle.E",         GenParticle_E);
+        tin->SetBranchAddress("GenParticle.Px",        GenParticle_Px);
+        tin->SetBranchAddress("GenParticle.Py",        GenParticle_Py);
+        tin->SetBranchAddress("GenParticle.Pz",        GenParticle_Pz);        
+        tin->SetBranchAddress("GenParticle.M1",        GenParticle_M1);
+        tin->SetBranchAddress("GenParticle.M2",        GenParticle_M2);
+        tin->SetBranchAddress("GenParticle.D1",        GenParticle_D1);
+        tin->SetBranchAddress("GenParticle.D2",        GenParticle_D2);
+    }
+    const Long64_t nentries = tin->GetEntriesFast();
+    if (isROOT) nextEvent = true;
+    std::cout << "Number of entries = " << nentries << ", " << isROOT << ", " << nextEvent << std::endl;
+
+    // Start event loop
     while ( nextEvent ) {
       
-      ++evtCtr;
-      if (evtCtr < min) continue;
-      if (evtCtr > max) break;
-      
-      if (evtCtr % 1000 == 0) std::cout << "event " << evtCtr << "\n";
-      
-      // per event
-      hfparticles.clear();
-      particles.clear();
-      bool onlyWplus = (tag.find("W+")!=std::string::npos);
-      bool onlyWminus = (tag.find("W-")!=std::string::npos);
-      bool containsWplus=false;
-      bool containsWminus=false;
-      if(isLHE) { //Read an LHE file
-	//std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
-	for (unsigned int i = 0 ; i < reader->hepeup.IDUP.size(); ++i){
-          if(reader->hepeup.IDUP.at(i)==24) containsWplus=true;
-          if(reader->hepeup.IDUP.at(i)==-24) containsWminus=true;
-	  //std::cout << reader->hepeup.IDUP.at(i) << " -- " << reader->hepeup.PUP.at(i).at(3) << " -- " << reader->hepeup.ISTUP.at(i) << std::endl;
-	  if((reader->hepeup.ISTUP.at(i) == 1) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=14) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=16) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=18)){
-	    float px = reader->hepeup.PUP.at(i).at(0);
-	    float py = reader->hepeup.PUP.at(i).at(1);
-	    float pz = reader->hepeup.PUP.at(i).at(2);
-	    float e  = reader->hepeup.PUP.at(i).at(3);                                    
-	    fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
-	    int pdgid = reader->hepeup.IDUP.at(i);
-	    curpar.set_user_index( pdgid );
-	    curpar.set_user_info(new PU14(pdgid,-1,-1));
-	    particles.push_back( curpar );
-	  }   
-	  
+        ++evtCtr;
+        if (evtCtr < min) continue;
+        if (evtCtr > max) break;      
+        if (evtCtr % 1000 == 0) std::cout << "event " << evtCtr << "\n";
+        
+        // per event
+        hfparticles.clear();
+        particles.clear();
+        neutrinos.clear();
+        bool onlyWplus = (tag.find("W+")!=std::string::npos);
+        bool onlyWminus = (tag.find("W-")!=std::string::npos);
+        bool containsWplus=false;
+        bool containsWminus=false;
+        if(isLHE) { //Read an LHE file
+            //std::cout << "reader.hepeup.IDUP.size() = " << reader.hepeup.IDUP.size() << std::endl;
+            for (unsigned int i = 0 ; i < reader->hepeup.IDUP.size(); ++i){
+                if(reader->hepeup.IDUP.at(i)==24) containsWplus=true;
+                if(reader->hepeup.IDUP.at(i)==-24) containsWminus=true;
+                //std::cout << reader->hepeup.IDUP.at(i) << " -- " << reader->hepeup.PUP.at(i).at(3) << " -- " << reader->hepeup.ISTUP.at(i) << std::endl;
+                if((reader->hepeup.ISTUP.at(i) == 1) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=14) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=16) && (TMath::Abs(reader->hepeup.IDUP.at(i))!=18)){
+                    float px = reader->hepeup.PUP.at(i).at(0);
+                    float py = reader->hepeup.PUP.at(i).at(1);
+                    float pz = reader->hepeup.PUP.at(i).at(2);
+                    float e  = reader->hepeup.PUP.at(i).at(3);                                    
+                    fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+                    int pdgid = reader->hepeup.IDUP.at(i);
+                    curpar.set_user_index( pdgid );
+                    curpar.set_user_info(new PU14(pdgid,-1,-1));
+                    particles.push_back( curpar );
+                }                 
+            } 
         } 
-      } else { //Read a HepMC file
-	for ( HepMC::GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p ){
-          if((*p)->pdg_id()==24) containsWplus=true;
-          if((*p)->pdg_id()==-24) containsWminus=true;
-	  //std::cout << (*p)->pdg_id() << " -- " << (*p)->momentum().perp() << " -- " << (*p)->status() << std::endl;
-	  float px = (*p)->momentum().px();
-	  float py = (*p)->momentum().py();
-	  float pz = (*p)->momentum().pz();
-	  float e  = (*p)->momentum().e();
-	  fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
-	  int pdgid = (*p)->pdg_id();
-	  if(TMath::Abs(pdgid) != 14 && TMath::Abs(pdgid) != 16 && TMath::Abs(pdgid) != 18 ){
- 		curpar.set_user_index( pdgid );
-		curpar.set_user_info(new PU14(pdgid,-1,-1));
-		if (std::find(b_ids.begin(), b_ids.end(), curpar.user_index()) != b_ids.end()) {
-		//if(abs((*p)->status())<=2)
-			 hfparticles.push_back( curpar );
-                	}
-          	if (std::find(chad_ids.begin(), chad_ids.end(), curpar.user_index()) != chad_ids.end()) {
-			if(abs((*p)->status())<=2) hfparticles.push_back( curpar );
-                	}
-	  	if(abs((*p)->status())==1) particles.push_back( curpar );
-	  }
-      	}
-      }
-      if (numberOfPileup>0) {
-	if (!mixer->next_event()) { // when running out of PU events start from the beginning
-	  delete mixer;
-	  mixer=new EventMixer(&cmdline);
-	  mixer->next_event();
-	}
-	vector<PseudoJet> full_event = mixer->particles() ;
-	vector<PseudoJet> hard_event, pileup_event;
-	SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
-	if (tag.find("i")!=std::string::npos) {
-	  puppiContainer curEvent(particles, pileup_event);
-	  particles = curEvent.puppiFetch(numberOfPileup);
-	  for (unsigned int i = 0; i < particles.size(); ++i)
-	    particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
-	} else {
-	  for (unsigned int i = 0; i < pileup_event.size(); ++i) {
-	    if(pileup_event[i].user_info<PU14>().charge()==0) continue;
-	    pileup_event[i].set_user_index( pileup_event[i].user_info<PU14>().pdg_id() );
-	    particles.push_back(pileup_event[i]);
-	  }
-	}
-      }
+        else if (isROOT){
+            tin->GetEntry(evtCtr);
+            //std::cout << "Evt ctr = " << evtCtr << ", particles " << GenParticle_ << std::endl;
+            for (int ipar = 0; ipar < GenParticle_; ipar++){
+                if(GenParticle_PID[ipar]==24) containsWplus=true;
+                if(GenParticle_PID[ipar]==-24) containsWminus=true;
+                
+                if (GenParticle_Status[ipar] == 1){
+                    float px = GenParticle_Px[ipar];
+                    float py = GenParticle_Py[ipar];
+                    float pz = GenParticle_Pz[ipar];
+                    float e  = GenParticle_E[ipar];    
+                    fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+                    int pdgid = GenParticle_PID[ipar];
+                    curpar.set_user_index( pdgid );
+                    curpar.set_user_info(new PU14(pdgid,-1,-1));
+                    if(TMath::Abs(pdgid) != 14 && TMath::Abs(pdgid) != 16 && TMath::Abs(pdgid) != 18 ){
+                        particles.push_back( curpar );                   
+                        if (std::find(b_ids.begin(), b_ids.end(), curpar.user_index()) != b_ids.end()) {
+                            hfparticles.push_back( curpar );
+                        }
+                        if (std::find(chad_ids.begin(), chad_ids.end(), curpar.user_index()) != chad_ids.end()) {
+                            if(abs(GenParticle_Status[ipar])<=2) hfparticles.push_back( curpar );
+                        }                   
+                    } else {
+                        neutrinos.push_back(curpar);
+                    }
+                } 
+            }
+        }
+        else { //Read a HepMC file
+            for ( HepMC::GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p ){
+                if((*p)->pdg_id()==24) containsWplus=true;
+                if((*p)->pdg_id()==-24) containsWminus=true;
+                //std::cout << (*p)->pdg_id() << " -- " << (*p)->momentum().perp() << " -- " << (*p)->status() << std::endl;
+                float px = (*p)->momentum().px();
+                float py = (*p)->momentum().py();
+                float pz = (*p)->momentum().pz();
+                float e  = (*p)->momentum().e();
+                fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
+                int pdgid = (*p)->pdg_id();
+                if(TMath::Abs(pdgid) != 14 && TMath::Abs(pdgid) != 16 && TMath::Abs(pdgid) != 18 ){
+                    curpar.set_user_index( pdgid );
+                    curpar.set_user_info(new PU14(pdgid,-1,-1));
+                    if (std::find(b_ids.begin(), b_ids.end(), curpar.user_index()) != b_ids.end()) {
+                        //if(abs((*p)->status())<=2)
+                        hfparticles.push_back( curpar );
+                    }
+                    if (std::find(chad_ids.begin(), chad_ids.end(), curpar.user_index()) != chad_ids.end()) {
+                        if(abs((*p)->status())<=2) hfparticles.push_back( curpar );
+                    }
+                    if(abs((*p)->status())==1) particles.push_back( curpar );
+                }
+            }
+        }
+        
+        if (numberOfPileup>0) {
+            if (!mixer->next_event()) { // when running out of PU events start from the beginning
+                delete mixer;
+                mixer=new EventMixer(&cmdline);
+                mixer->next_event();
+            }
+            vector<PseudoJet> full_event = mixer->particles() ;
+            vector<PseudoJet> hard_event, pileup_event;
+            SelectorIsHard().sift(full_event, hard_event, pileup_event); // this sifts the full event into two vectors
+            if (tag.find("i")!=std::string::npos) {
+                puppiContainer curEvent(particles, pileup_event);
+                particles = curEvent.puppiFetch(numberOfPileup);
+                for (unsigned int i = 0; i < particles.size(); ++i)
+                    particles[i].set_user_index( particles[i].user_info<PU14>().pdg_id() );
+            } else {
+                for (unsigned int i = 0; i < pileup_event.size(); ++i) {
+                    if(pileup_event[i].user_info<PU14>().charge()==0) continue;
+                    pileup_event[i].set_user_index( pileup_event[i].user_info<PU14>().pdg_id() );
+                    particles.push_back(pileup_event[i]);
+                }
+            }
+        }
       	
-      if(((!onlyWplus)||(containsWplus))&&((!onlyWminus)||(containsWminus))) {
-              // discretize neutral hadrons
-        bool discretize = (tag.find("h")!=std::string::npos);
-        static Double_t nPU=numberOfPileup*(tag.find("q")!=std::string::npos);
-        static bool discretizeEcal=(tag.find("e")!=std::string::npos);
-        static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
-        static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
-        static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos)?0.9:1.0; // Tracking efficiency
-        if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,nPU, maxChargedPt, maxChargedDr, trackingEfficiency);
-        else newparticles = particles;
-        // smear particle momenta
-        static Double_t shiftChargedScale=findOption("CS",tag);
-        static Double_t shiftPhotonScale=findOption("PS",tag);
-        static Double_t shiftHadronScale=findOption("HS",tag);
-        if (tag.find("r")!=std::string::npos)
-          for (unsigned int i = 0; i < newparticles.size(); ++i)
-            smearJetPt(newparticles[i],shiftChargedScale,shiftPhotonScale,shiftHadronScale);
-        // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
-        analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar, hfparticles );        
-       }
-
-	if(isLHE) { 
-	  nextEvent = reader->readEvent();
-	}
-	else { 
-	  delete evt;
-	  *hepmcreader >> evt;
-	  nextEvent = (evt != 0);
-	}
+        if(((!onlyWplus)||(containsWplus))&&((!onlyWminus)||(containsWminus))) {
+            // discretize neutral hadrons
+            bool discretize = (tag.find("h")!=std::string::npos);
+            static Double_t nPU=numberOfPileup*(tag.find("q")!=std::string::npos);
+            static bool discretizeEcal=(tag.find("e")!=std::string::npos);
+            static Double_t maxChargedPt=(tag.find("t")!=std::string::npos)?110:1e10; // Threshold above which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons. Take value where CMS HCAL resolution gets better than tracking resolution
+            static Double_t maxChargedDr=(tag.find("s")!=std::string::npos)?0.01:1e10; // Distance to nearest neighbor below which track reconstruction in jet core is expected to fail and charged hadrons are reconstructed as neutral hadrons.
+            static Double_t trackingEfficiency=(tag.find("u")!=std::string::npos)?0.9:1.0; // Tracking efficiency
+            if (discretize) newparticles = discretizeEvent(particles,discretizeEcal,nPU, maxChargedPt, maxChargedDr, trackingEfficiency);
+            else newparticles = particles;
+            // smear particle momenta
+            static Double_t shiftChargedScale=findOption("CS",tag);
+            static Double_t shiftPhotonScale=findOption("PS",tag);
+            static Double_t shiftHadronScale=findOption("HS",tag);
+            if (tag.find("r")!=std::string::npos)
+                for (unsigned int i = 0; i < newparticles.size(); ++i)
+                    smearJetPt(newparticles[i],shiftChargedScale,shiftPhotonScale,shiftHadronScale);
+            // std::cout << "number of particles = " << newparticles.size() << ", " << particles.size() << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
+            analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar, hfparticles );        
+        }
+        
+        if(isLHE) { 
+            nextEvent = reader->readEvent();
+        }
+        else if(isROOT){
+            if (evtCtr > nentries) nextEvent = false;
+        }
+        else { 
+            delete evt;
+            *hepmcreader >> evt;
+            nextEvent = (evt != 0);
+        }
     }
     
     std::cout << "finish loop" << std::endl;
