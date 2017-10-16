@@ -292,6 +292,7 @@ int main (int argc, char **argv) {
       nextEvent = (evt != 0);
     }
 
+
     TFile *fin;
     TTree *tin;
     const Int_t kMaxEvent = 1;
@@ -316,6 +317,8 @@ int main (int argc, char **argv) {
     Int_t           GenParticle_D1[kMaxGenParticle];   //[GenParticle_]
     Int_t           GenParticle_D2[kMaxGenParticle];   //[GenParticle_]
 
+    std::cout << "where do you break!?" << std::endl;
+
     if(isROOT){
         fin = new TFile(inName,"READ");     // Open root input file from madgraph+pythia
         tin = (TTree*)fin->Get("STDHEP");    // Get tree from root file
@@ -339,9 +342,15 @@ int main (int argc, char **argv) {
         tin->SetBranchAddress("GenParticle.D1",        GenParticle_D1);
         tin->SetBranchAddress("GenParticle.D2",        GenParticle_D2);
     }
-    const Long64_t nentries = tin->GetEntriesFast();
-    if (isROOT) nextEvent = true;
+
+    Long64_t nentries = 0;
+    if (isROOT){ 
+        nentries = tin->GetEntriesFast();
+        nextEvent = true;
+    }
     std::cout << "Number of entries = " << nentries << ", " << isROOT << ", " << nextEvent << std::endl;
+
+
 
     // Start event loop
     while ( nextEvent ) {
@@ -349,7 +358,7 @@ int main (int argc, char **argv) {
         ++evtCtr;
         if (evtCtr < min) continue;
         if (evtCtr > max) break;      
-        if (evtCtr % 1000 == 0) std::cout << "event " << evtCtr << "\n";
+        if (evtCtr % 1 == 0) std::cout << "event " << evtCtr << "\n";
         
         // per event
         hfparticles.clear();

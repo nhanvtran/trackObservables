@@ -6,7 +6,7 @@ FASTJETLOCATION=/uscms_data/d2/ntran/physics/ttbarMela/fastjet/fastjet-install
 FASTJETINC :=`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 FASTJETLIB :=`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 
-HEPMCLOCATION=/cvmfs/cms.cern.ch/slc6_amd64_gcc493/external/hepmc/2.06.07
+HEPMCLOCATION=/uscms_data/d2/ntran/physics/ttbarMela/HepMC/install
 #/afs/cern.ch/user/h/hinzmann/workspace/Wmass/trackObservables/processing/HepMC/HepMC-install
 HEPMCINC :=-I$(HEPMCLOCATION)/include
 HEPMCLIB :=-L$(HEPMCLOCATION)/lib  -lHepMC
