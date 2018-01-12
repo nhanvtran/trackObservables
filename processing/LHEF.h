@@ -517,7 +517,7 @@ protected:
    * Used internally to read a single line from the stream.
    */
   bool getline() {
-    return ( std::getline(file, currentLine) );
+    return ( static_cast<bool>(std::getline(file, currentLine)) );
   }
 
 protected:

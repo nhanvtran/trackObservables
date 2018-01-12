@@ -279,6 +279,16 @@ int main (int argc, char **argv) {
                 float e  = reader.hepeup.PUP.at(i).at(3);                                    
                 fastjet::PseudoJet curpar   = fastjet::PseudoJet( px, py, pz, e );
                 int pdgid = reader.hepeup.IDUP.at(i);
+            
+                if(pdgid == -12)  continue;
+                if(pdgid ==  12)  continue;
+                if(pdgid == -14)  continue;
+                if(pdgid ==  14)  continue;
+                if(pdgid == -16)  continue;
+                if(pdgid ==  16)  continue;
+                if(pdgid == -18)  continue;
+                if(pdgid ==  18)  continue;
+
                 curpar.set_user_index( pdgid );
                 curpar.set_user_info(new PU14(pdgid,-1,-1));
                 particles.push_back( curpar );
