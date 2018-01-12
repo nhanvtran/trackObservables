@@ -24,30 +24,35 @@ fi
 cd processing
 procdir=$PWD
 
-anasubs=(r05_h01_e005_t220 
-r05_h002_e001_t220
-r1_h022_e0175_t220
-r0_h0_e0)
-anacfgs=(r0.5:h0.010:e0.005:t220.0
-r0.5:h0.002:e0.001:t220.0 
-r1.0:h0.022:e0.0175:t220.0
-z)
+ntupleLoc=/store/user/ecoleman/TrackObservablesStudy/fromMarat/ 
+
+anasubs=(testing)
+anacfgs=(z)
+
+#anasubs=(r05_h01_e005_t220_nonu
+#         r05_h002_e001_t220_nonu
+#         r1_h022_e0175_t220_nonu
+#         r0_h0_e0_nonu)
+#anacfgs=(r0.5:h0.010:e0.005:t220.0
+#r0.5:h0.002:e0.001:t220.0 
+#r1.0:h0.022:e0.0175:t220.0
+#z)
 
 filehandles=(
-processed-pythia82-fcc100-WW-pt5-50k 
-processed-pythia82-lhc13-WW-pt1-50k 
-processed-pythia82-fcc100-ZZ-pt5-50k 
-processed-pythia82-lhc13-ZZ-pt1-50k 
-processed-pythia82-fcc100-gg-pt5-50k 
-processed-pythia82-lhc13-gg-pt1-50k 
-processed-pythia82-fcc100-tt-pt5-50k 
-processed-pythia82-lhc13-tt-pt1-50k 
-processed-pythia82-fcc100-qq-pt5-50k 
-processed-pythia82-lhc13-qq-pt1-50k)
+processed-pythia82-fcc100-WW-pt5-50k) 
+#processed-pythia82-lhc13-WW-pt1-50k 
+#processed-pythia82-fcc100-ZZ-pt5-50k 
+#processed-pythia82-lhc13-ZZ-pt1-50k 
+#processed-pythia82-fcc100-gg-pt5-50k 
+#processed-pythia82-lhc13-gg-pt1-50k 
+#processed-pythia82-fcc100-tt-pt5-50k 
+#processed-pythia82-lhc13-tt-pt1-50k 
+#processed-pythia82-fcc100-qq-pt5-50k 
+#processed-pythia82-lhc13-qq-pt1-50k)
 
-trainings=(shapesonlycut
-massonlycut
-allcut)
+trainings=(all
+massonly
+shapesonly)
 
 
 ####################################################################
@@ -63,6 +68,21 @@ make
 eval `eos root://cmseos.fnal.gov rm /store/user/${USER}/TrackObservablesStudy/anaSubstructure`
 xrdcp anaSubstructure root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
 xrdcp lhc14-pythia8-4C-minbias-nev100.pu14.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
+
+shopt -s expand_aliases
+alias cachedir='echo "Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag.\n# For information about cache directory tags, see:\n#       http://www.brynosaurus.com/cachedir/" > CACHEDIR.TAG'
+
+current=`pwd`
+cd $CMSSW_BASE/tmp
+cachedir
+cd $CMSSW_BASE/src/.git
+cachedir
+cd $CMSSW_BASE/src/TreeMaker/.git
+cachedir
+cd $current
+
+tar --exclude-caches-all -zcf ${CMSSW_VERSION}.tar.gz -C ${CMSSW_BASE}/.. ${CMSSW_VERSION}
+xrdcp ${CMSSW_VERSION}.tar.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
 
 ;;
 
@@ -90,7 +110,7 @@ for ana in ${anasubs[*]} ; do
 
 
     # submit condor jobs
-    python SubmitCondor.py --indir /store/user/${USER}/TrackObservablesStudy/fromMarat/ \
+    python SubmitCondor.py --indir ${ntupleLoc} \
         --outdir ./${ana}/ \
         --maxEvents 50000 \
         --evPerJob 500 \
@@ -214,17 +234,19 @@ echo "Running trainings"
 
 # signal process groups to train (csv)
 aloSigList=(WW,ZZ
-gg,qq
+tt
 qq
 WW,ZZ
 WW)
+#aloSigList=(WW)
 
 # background process groups to train (csv)
 aloBkgList=(gg,qq
-tt
+gg,qq
 gg
 tt
 ZZ)
+#aloBkgList=(qq)
 
 # variables for each group 
 massVars="j_mass_trim,j_mass_mmdt,j_mass_prun,j_mass_sdb2,j_mass_sdm1,j_mass"
@@ -240,6 +262,7 @@ shapeVarList=("j_d2_b1,j_d2_b2,j_tau21_b1,j_tau21_b2"
 "j_c1_b0,j_c1_b1,j_c1_b2,j_tau1_b1,j_tau1_b2,j_zlogz,j_multiplicity"
 "j_c2_b1,j_c2_b2,j_d2_b1,j_d2_b2,j_tau21_b1,j_tau21_b2,j_c1_b0,j_c1_b1,j_c1_b2,j_tau1_b1,j_tau1_b2,j_zlogz,j_tau32_b1,j_tau32_b2"
 "j_c2_b1,j_c2_b2,j_d2_b1,j_d2_b2,j_tau21_b1,j_tau21_b2,j_c1_b0,j_c1_b1,j_c1_b2,j_tau1_b1,j_tau1_b2,j_zlogz,j_tau32_b1,j_tau32_b2")
+
 
 cd ${procdir}/../analysis/
 for ana in ${anasubs[*]} ; do
@@ -261,27 +284,21 @@ for ana in ${anasubs[*]} ; do
         
         # shapesonly trainings
         if [[ "${trainings[@]}" =~ "shapesonly" ]] ; then
-            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${shapeVarList[$i]} shapesonlycut"
+            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${shapeVarList[$i]} shapesonly"
             eval "$cmd" &
-            #cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${shapeVarList[$i]} shapesonlycut"
-            #eval "$cmd" &
         fi
 
         # massonly trainings
         if [[ "${trainings[@]}" =~ "massonly" ]] ; then
-            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars} massonlycut"
+            cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars} massonly"
             eval "$cmd" &
-            #cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars} massonlycut"
-            #eval "$cmd" &
         fi
         
         # all trainings
-        cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars},${aloVarList[$i]} allcut"
+        cmd="sh launchJobs.sh ${ana} ${aloSigList[$i]} ${aloBkgList[$i]} ${massVars},${aloVarList[$i]} all"
         eval "$cmd"
-        #cmd="sh launchJobs.sh ${ana} ${aloBkgList[$i]} ${aloSigList[$i]} ${massVars},${aloVarList[$i]} allcut"
-        #eval "$cmd"
 
-        sleep 0.5
+        sleep 10
 
         let "i += 1"    
     done
@@ -338,7 +355,7 @@ for training in ${trainings[*]} ; do
         --inputs ./trainings_${ana}_${training}/ \
         --output ${procdir}/../output/${ana}/${training}
 
-    ## get ROC background rejection grids 
+    ### get ROC background rejection grids 
     python getROCBkgRej.py \
         --inputs ${procdir}/../output/${ana}/eosrootfiles/${training}/ \
         --output ${procdir}/../output/${ana}/${training} \
@@ -349,24 +366,13 @@ done
 
 done
 
-#### get ROC background rejection grids (Detector Comparison) 
+### get ROC background rejection grids (Detector Comparison) 
 python getDetecCompBkgRej.py \
-    --inputs "${procdir}/../output/r*t*/eosrootfiles/allcut/*.root" \
+    --inputs "${procdir}/../output/r*t*/eosrootfiles/allfin/*.root" \
     --output ${procdir}/../output/ \
-    --tree allpar --training allcut \
-    --name DetecComp_bkgRejPwr_at_sig0p5_
-python getDetecCompBkgRej.py \
-    --inputs "${procdir}/../output/r*t*/eosrootfiles/allcut/*.root" \
-    --output ${procdir}/../output/ \
-    --tree tracks --training allcut \
-    --name DetecComp_bkgRejPwr_at_sig0p5_
-python getDetecCompBkgRej.py \
-    --inputs "${procdir}/../output/r*t*/eosrootfiles/allcut/*.root" \
-    --output ${procdir}/../output/ \
-    --tree tragam --training allcut \
+    --tree allpar --training allfin10 \
     --name DetecComp_bkgRejPwr_at_sig0p5_
 
-    
 root -l -b -q "getROCsForAllSmearings.cc(\"${procdir}/../output/\",\"${procdir}/../output/\")" & 
 
 ;;
@@ -387,7 +393,7 @@ cd ${procdir}/../output/
 #tar -czvf output.tar.gz  ./Summary* --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
 #tar -czvf output.tar.gz  ./Summary* ./*cmpsmear* ./ROCEnvelope* --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
 #tar -czvf output.tar.gz  ./*/*/BackgroundRejection* --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
-tar -czvf output.tar.gz ./*/*/*.{pdf,png,C} ./*.{pdf,png,C} ./*/*.{pdf,png,C} --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
+tar -czvf output.tar.gz ./r0_h0_e0/*.{pdf,png,C} ./r0_h0_e0/*/*.{pdf,png,C} --exclude=*.{root,lhe,gz} --exclude=*eosrootfiles*
 scp ${procdir}/../output/output.tar.gz \
     ${USER}@lxplus.cern.ch:~/www/TrackObservablesStudy/$2/
 
@@ -398,26 +404,24 @@ SUMMARY )
 echo "Making summary projections"
 
 # hardcoded settings: anaSubs to use
-aloAna="r1_h022_e0175_t220,r05_h01_e005_t220,r05_h002_e001_t220"
+aloAna="r1_h022_e0175_t220_nonu,r05_h01_e005_t220_nonu,r05_h002_e001_t220_nonu"
+#aloAna="r0_h0_e0_nonu"
 
 # kinds of plots:
 # 1) a plot for every (tree,pt); draw (sig,ana)
 # 2) a plot for every (pt,ana) ; draw (sig,tree)
 # 3) a plot for every (pt,ana) ; draw (sig,tree)
 lines=(
-**,**,*,*
-*,**,*,**
-*,**,*,**)
+*,pt1,**,*)
 # a list of csv of signals to use for each plot
-sigs=(W,g W,q g,t)
+sigs=(W,Z) 
 # a list of csv of variables for each set of plots
 varLists=(
-j_mass_mmdt,j_tau21_b1
-j_mass_mmdt,j_tau21_b1
-j_mass_mmdt,j_tau32_b1
+j_mass_mmdt
 )
+#j_c1_b0,j_c1_b1,j_c1_b2,j_tau1_b1,j_tau1_b2,j_zlogz,j_multiplicity,j_mass_trim,j_mass_mmdt,j_mass_prun,j_mass_sdb2,j_mass_sdm1,j_mass
 # name indicating kind of plot
-nameList=(Wvg Wvq gvt)
+nameList=(WvZDetecComp)
 
 cd ${procdir}/../plotting/
 
@@ -428,6 +432,7 @@ for sig  in ${sigs[*]} ; do
     cmd="${cmd} && python plotSampleSummary.py"
     cmd="${cmd} --basedir /uscms_data/d3/ecoleman/TrackObservablesStudy/samples/"
     cmd="${cmd} --sigs ${sig}"
+    cmd="${cmd} --logPlots"
     cmd="${cmd} --vars ${varLists[i]}"
     cmd="${cmd} --ana ${aloAna}"
     cmd="${cmd} --lines ${lines[$i]}"

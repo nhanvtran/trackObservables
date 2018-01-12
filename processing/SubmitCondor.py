@@ -3,6 +3,7 @@ from optparse import OptionParser
 import math
 
 pwd=os.environ['PWD']
+user=os.environ['USER']
 
 # get options
 parser = OptionParser(description='Submit condor jobs for anaSubstructure calls.')
@@ -16,7 +17,13 @@ parser.add_option('--fastJetLoc', action='store', dest='fastJetLoc', default="%s
 parser.add_option('--cfg',        action='store', dest='cfg',        default="rhe",   help='Settings to pass to anaSubstructure')
 
 (options, args) = parser.parse_args()
-cmssw_base = os.environ['CMSSW_BASE']
+
+# check that we have a CMSSW tarball available
+cmssw_loc = "root://cmseos.fnal.gov:///store/user/%s/TrackObservablesStudy/"%(user)
+cmssw_vers = os.environ['CMSSW_VERSION']
+if cmssw_vers == '' or 'CMSSW' not in cmssw_vers :
+    print "Improper CMSSW environment. Exiting..."
+    quit()
 
 # check that input directory is specified
 if options.indir == "":
@@ -52,7 +59,8 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'INDIR'       in line: line = line.replace('INDIR',       "root://cmseos.fnal.gov///%s"%options.indir)
         if 'FILE'        in line: line = line.replace('FILE',        files[i].split('.')[0])
         if 'NAME'        in line: line = line.replace('NAME',        files[i].split('.')[0] + "_%i"%j)
-        if 'CMSSWBASE'   in line: line = line.replace('CMSSWBASE',   cmssw_base)
+        if 'CMSSWVER'    in line: line = line.replace('CMSSWVER',    cmssw_vers)
+        if 'CMSSWLOC'    in line: line = line.replace('CMSSWLOC',    cmssw_loc)
         if 'ANASUBLOC'   in line: line = line.replace('ANASUBLOC',   options.anaSubLoc)
         if 'FASTJETLOC'  in line: line = line.replace('FASTJETLOC',  options.fastJetLoc)
         if 'MINEV'       in line: line = line.replace('MINEV',       minEv)
@@ -73,7 +81,8 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
         if 'INDIR'       in line: line = line.replace('INDIR',       "root://cmseos.fnal.gov///%s"%options.indir)
         if 'FILE'        in line: line = line.replace('FILE',        files[i].split('.')[0])
         if 'NAME'        in line: line = line.replace('NAME',        files[i].split('.')[0] + "_%i"%j)
-        if 'CMSSWBASE'   in line: line = line.replace('CMSSWBASE',   cmssw_base)
+        if 'CMSSWVER'    in line: line = line.replace('CMSSWVER',    cmssw_vers)
+        if 'CMSSWLOC'    in line: line = line.replace('CMSSWLOC',    cmssw_loc)
         if 'ANASUBLOC'   in line: line = line.replace('ANASUBLOC',   options.anaSubLoc)
         if 'FASTJETLOC'  in line: line = line.replace('FASTJETLOC',  options.fastJetLoc)
         if 'MINEV'       in line: line = line.replace('MINEV',       "%i"%minEv)
@@ -95,4 +104,3 @@ for i,j in [(i,j) for i in range(len(files)) for j in range(nFilesPerLHE)]:
     current_name = files[i].split('.')[0] + "_%i"%j
     os.chdir(options.outdir + '/')
     os.system('condor_submit ' + current_name + '.condor')
-
