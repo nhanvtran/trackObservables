@@ -154,6 +154,14 @@ std::vector<float> j_mass_sdb2;
 std::vector<float> j_mass_sdm1;
 std::vector<float> j_multiplicity;
 
+// specific jets
+std::vector<float> j1_px;
+std::vector<float> j1_py;
+std::vector<float> j1_pz;
+std::vector<float> j1_e;
+std::vector<float> j1_pdgid;
+
+
 // 211, -211: PI+, PI-
 // 3122, -3122: Lambda 
 // 22: photons
@@ -356,7 +364,7 @@ int main (int argc, char **argv) {
           for (unsigned int i = 0; i < newparticles.size(); ++i)
             smearJetPt(newparticles[i]);
 
-        //std::cout << "number of particles = " << newparticles.size() 
+        // std::cout << "number of particles = " << newparticles.size() 
         //          << ", " << particles.size() 
         //          << ", " << float(newparticles.size())/float(particles.size()) << std::endl;
         analyzeEvent( newparticles, t_tracks, t_tragam, t_allpar );        
@@ -397,23 +405,36 @@ void analyzeEvent(std::vector < fastjet::PseudoJet > particles, TTree* t_tracks,
     // All Particles Looop
     for (unsigned int i = 0; i < out_jets.size(); i++){
         PushBackJetInformation(out_jets[i],0);
+
+        // adding the jet particls
+        if (i==0){
+            // std::cout << "out_jets[i].constituents().size() = " << out_jets[i].constituents().size() << std::endl;
+            for (unsigned int j = 0; j < out_jets[i].constituents().size(); j++){
+                // std::cout << out_jets[i].constituents()[j].user_index() << std::endl;
+                j1_px.push_back( out_jets[i].constituents()[j].px() );
+                j1_py.push_back( out_jets[i].constituents()[j].py() );
+                j1_pz.push_back( out_jets[i].constituents()[j].pz() );
+                j1_e.push_back( out_jets[i].constituents()[j].e() );
+                j1_pdgid.push_back( out_jets[i].constituents()[j].user_index() );
+            }
+        }
     }
     t_allpar->Fill();
     clearVectors();
 
-    for (unsigned int i = 0; i < out_jets.size(); i++){
-        PushBackJetInformation(out_jets[i],1);
-    }
-    t_tracks->Fill();
-    clearVectors();
+    // for (unsigned int i = 0; i < out_jets.size(); i++){
+    //     PushBackJetInformation(out_jets[i],1);
+    // }
+    // t_tracks->Fill();
+    // clearVectors();
 
-    // std::cout << "tracks" << std::endl;
+    // // std::cout << "tracks" << std::endl;
 
-    for (unsigned int i = 0; i < out_jets.size(); i++){
-        PushBackJetInformation(out_jets[i],2);
-    }
-    t_tragam->Fill();
-    clearVectors();
+    // for (unsigned int i = 0; i < out_jets.size(); i++){
+    //     PushBackJetInformation(out_jets[i],2);
+    // }
+    // t_tragam->Fill();
+    // clearVectors();
     
     // std::cout << "tracks+photons" << std::endl;
 
@@ -498,6 +519,12 @@ void declareBranches( TTree* t ){
     t->Branch("j_mass_sdm1"      , &j_mass_sdm1      );
     t->Branch("j_multiplicity"   , &j_multiplicity   );
 
+    t->Branch("j1_px"            , &j1_px      );
+    t->Branch("j1_py"            , &j1_py      );
+    t->Branch("j1_pz"            , &j1_pz      );
+    t->Branch("j1_e"             , &j1_e       );
+    t->Branch("j1_pdgid"         , &j1_pdgid   );
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -566,6 +593,12 @@ void clearVectors(){
     j_mass_sdb2.clear();
     j_mass_sdm1.clear();
     j_multiplicity.clear();
+
+    j1_px.clear();
+    j1_py.clear();
+    j1_pz.clear();
+    j1_e.clear();
+    j1_pdgid.clear();
 }
 
 

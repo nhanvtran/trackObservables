@@ -26,8 +26,10 @@ procdir=$PWD
 
 ntupleLoc=/store/user/ecoleman/TrackObservablesStudy/fromMarat/ 
 
-anasubs=(testing)
-anacfgs=(z)
+anasubs=(r1_h022_e0175_t220_nonu
+         r0_h0_e0_nonu)
+anacfgs=(r0.5:h0.010:e0.005:t220.0
+         z)
 
 #anasubs=(r05_h01_e005_t220_nonu
 #         r05_h002_e001_t220_nonu
@@ -39,16 +41,16 @@ anacfgs=(z)
 #z)
 
 filehandles=(
-processed-pythia82-fcc100-WW-pt5-50k) 
-#processed-pythia82-lhc13-WW-pt1-50k 
-#processed-pythia82-fcc100-ZZ-pt5-50k 
-#processed-pythia82-lhc13-ZZ-pt1-50k 
-#processed-pythia82-fcc100-gg-pt5-50k 
-#processed-pythia82-lhc13-gg-pt1-50k 
-#processed-pythia82-fcc100-tt-pt5-50k 
-#processed-pythia82-lhc13-tt-pt1-50k 
-#processed-pythia82-fcc100-qq-pt5-50k 
-#processed-pythia82-lhc13-qq-pt1-50k)
+processed-pythia82-fcc100-WW-pt5-50k
+processed-pythia82-lhc13-WW-pt1-50k 
+processed-pythia82-fcc100-ZZ-pt5-50k 
+processed-pythia82-lhc13-ZZ-pt1-50k 
+processed-pythia82-fcc100-gg-pt5-50k 
+processed-pythia82-lhc13-gg-pt1-50k 
+processed-pythia82-fcc100-tt-pt5-50k 
+processed-pythia82-lhc13-tt-pt1-50k 
+processed-pythia82-fcc100-qq-pt5-50k 
+processed-pythia82-lhc13-qq-pt1-50k)
 
 trainings=(all
 massonly
@@ -66,8 +68,8 @@ echo "Making executables"
 
 make
 eval `eos root://cmseos.fnal.gov rm /store/user/${USER}/TrackObservablesStudy/anaSubstructure`
-xrdcp anaSubstructure root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
-xrdcp lhc14-pythia8-4C-minbias-nev100.pu14.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
+xrdcp -f anaSubstructure root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
+xrdcp -f lhc14-pythia8-4C-minbias-nev100.pu14.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
 
 shopt -s expand_aliases
 alias cachedir='echo "Signature: 8a477f597d28d172789f06886806bc55\n# This file is a cache directory tag.\n# For information about cache directory tags, see:\n#       http://www.brynosaurus.com/cachedir/" > CACHEDIR.TAG'
@@ -82,7 +84,7 @@ cachedir
 cd $current
 
 tar --exclude-caches-all -zcf ${CMSSW_VERSION}.tar.gz -C ${CMSSW_BASE}/.. ${CMSSW_VERSION}
-xrdcp ${CMSSW_VERSION}.tar.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
+xrdcp -f ${CMSSW_VERSION}.tar.gz root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/
 
 ;;
 
@@ -112,7 +114,7 @@ for ana in ${anasubs[*]} ; do
     # submit condor jobs
     python SubmitCondor.py --indir ${ntupleLoc} \
         --outdir ./${ana}/ \
-        --maxEvents 50000 \
+        --maxEvents 5000 \
         --evPerJob 500 \
         --anaSubLoc root://cmseos.fnal.gov:///store/user/${USER}/TrackObservablesStudy/ \
         --outdirname ${ana} \
@@ -139,9 +141,9 @@ for fileh in ${filehandles[*]} ; do
     echo " "
     echo "Working on ${fileh}-${ana}.root"
     echo " "
-    hadd -k ${fileh}-${ana}.root  \
+    hadd -f -k ${fileh}-${ana}.root  \
         `xrdfs root://cmseos.fnal.gov ls -u /store/user/${USER}/${ana} | grep root | grep ${fileh}`
-    mv ${fileh}-${ana}.root ../../samples/
+    mv ${fileh}-${ana}.root samples/.
 
 done
 done
